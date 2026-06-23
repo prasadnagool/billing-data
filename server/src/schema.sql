@@ -488,3 +488,48 @@ CREATE TABLE IF NOT EXISTS activity (
   amount      INTEGER,
   description TEXT
 );
+
+-- ===================== P&L / Operating Expenses module =====================
+-- Expense categories master (salaries, rent, software, etc.). `kind` decides
+-- where the category lands in the P&L: 'Direct' = cost of sales (above gross
+-- profit), 'Indirect' = operating overhead (below gross profit).
+CREATE TABLE IF NOT EXISTS expense_categories (
+  id                  TEXT PRIMARY KEY,
+  name                TEXT NOT NULL UNIQUE,
+  kind                TEXT NOT NULL DEFAULT 'Indirect',  -- Direct | Indirect
+  default_tds_section TEXT,
+  default_tds_rate    REAL DEFAULT 0,
+  sort                INTEGER DEFAULT 0,
+  active              INTEGER DEFAULT 1,
+  created_at          TEXT NOT NULL,
+  updated_at          TEXT NOT NULL
+);
+
+-- Company operating-expense ledger (overheads + direct costs not tied to a PO).
+-- Money is stored in INTEGER paise. `amount` is the taxable/base value (ex-GST);
+-- GST and TDS are tracked separately so P&L lines use the ex-GST base.
+CREATE TABLE IF NOT EXISTS operating_expenses (
+  id            TEXT PRIMARY KEY,
+  expense_no    TEXT,
+  expense_date  TEXT NOT NULL,
+  category_id   TEXT REFERENCES expense_categories(id),
+  payee         TEXT,                          -- employee / landlord / supplier name
+  vendor_id     TEXT REFERENCES vendors(id),   -- optional link for TDS/GSTIN
+  description   TEXT,
+  amount        INTEGER NOT NULL DEFAULT 0,     -- taxable base (ex-GST), paise
+  gst_rate      REAL DEFAULT 0,
+  gst_amount    INTEGER DEFAULT 0,
+  itc_eligible  INTEGER DEFAULT 0,
+  tds_section   TEXT,
+  tds_rate      REAL DEFAULT 0,
+  tds_amount    INTEGER DEFAULT 0,
+  total         INTEGER DEFAULT 0,              -- amount + gst_amount (gross)
+  net_paid      INTEGER DEFAULT 0,              -- total - tds_amount
+  payment_mode  TEXT DEFAULT 'Bank',           -- Bank | Cash | Petty Cash | UPI | Card
+  is_recurring  INTEGER DEFAULT 0,
+  notes         TEXT,
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_opex_date     ON operating_expenses(expense_date);
+CREATE INDEX IF NOT EXISTS idx_opex_category ON operating_expenses(category_id);

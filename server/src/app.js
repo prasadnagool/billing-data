@@ -10,6 +10,7 @@ import reports from './routes/reports.js';
 import products from './routes/products.js';
 import gst from './routes/gst.js';
 import expenses from './routes/expenses.js';
+import pnl from './routes/pnl.js';
 import admin from './routes/admin.js';
 import treasury from './routes/treasury.js';
 import prefs from './routes/prefs.js';
@@ -25,6 +26,8 @@ const WRITE_MODULE = [
   [/^\/receipts/, 'client_payments'],
   [/^\/credit-notes/, 'credit_notes'],
   [/^\/expenses/, 'expenses'],
+  [/^\/operating-expenses/, 'operating_expenses'],
+  [/^\/expense-categories/, 'expense_categories'],
   [/^\/vendor-pos/, 'vendor_pos'],
   [/^\/vendor-invoices/, 'vendor_invoices'],
   [/^\/vendors/, 'vendors'],
@@ -68,6 +71,7 @@ export function createApp() {
   app.use('/api', products);
   app.use('/api', gst);
   app.use('/api', expenses);
+  app.use('/api', pnl);
   app.use('/api', admin);
   app.use('/api', treasury);
   app.use('/api', prefs);

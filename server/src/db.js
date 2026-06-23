@@ -108,6 +108,28 @@ if (!hasSuper) {
   console.log('[db] created super admin "prasad"');
 }
 
+// Seed default expense categories (idempotent — only when the table is empty).
+const catCount = db.prepare('SELECT COUNT(*) AS n FROM expense_categories').get().n;
+if (catCount === 0) {
+  const ts = new Date().toISOString();
+  const defaults = [
+    ['Salaries', 'Indirect', '192', 0],
+    ['Rent', 'Indirect', '194I', 10],
+    ['Director Remuneration', 'Indirect', '194J', 10],
+    ['Marketing & Sales', 'Indirect', '', 0],
+    ['Software Charges', 'Indirect', '', 0],
+    ['Travelling Expenses', 'Indirect', '', 0],
+    ['Maintenance Expenses', 'Indirect', '', 0],
+    ['Reimbursement', 'Indirect', '', 0],
+    ['Petty Cash', 'Indirect', '', 0],
+    ['Fixed Recurring Expenses', 'Indirect', '', 0],
+  ];
+  const ins = db.prepare(`INSERT INTO expense_categories (id,name,kind,default_tds_section,default_tds_rate,sort,active,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,1,?,?)`);
+  defaults.forEach(([name, kind, sec, rate], i) => ins.run(randomUUID(), name, kind, sec, rate, i, ts, ts));
+  console.log('[db] seeded default expense categories');
+}
+
 // --- helpers ------------------------------------------------------------------
 export const uuid = () => randomUUID();
 export const now = () => new Date().toISOString();

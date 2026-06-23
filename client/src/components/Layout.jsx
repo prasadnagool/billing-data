@@ -66,8 +66,16 @@ const NAV = [
   },
   { section: 'Masters', items: [{ to: '/products', label: 'Products', key: 'products', icon: 'box' }] },
   {
+    section: 'P&L / Expenses',
+    items: [
+      { to: '/operating-expenses', label: 'Operating Expenses', key: 'operating_expenses', icon: 'wallet' },
+      { to: '/expense-categories', label: 'Expense Categories', key: 'expense_categories', icon: 'list' },
+    ],
+  },
+  {
     section: 'Reports',
     items: [
+      { to: '/reports/profit-loss', label: 'Profit & Loss', key: 'reports', icon: 'trending' },
       { to: '/reports/aging', label: 'AR / AP Aging', key: 'reports', icon: 'clock' },
       { to: '/reports/tax', label: 'Tax Register (GST + TDS)', key: 'reports', icon: 'percent' },
       { to: '/reports/pnl', label: 'PO Profitability', key: 'reports', icon: 'trending' },
@@ -94,6 +102,7 @@ export const MODULES = [
   ['vendor_pos', 'Vendor POs'], ['vendor_invoices', 'Vendor Invoices'],
   ['vendor_payments', 'Vendor Payments'], ['vendor_advances', 'Vendor Advances'],
   ['debit_notes', 'Debit Notes'], ['products', 'Products'], ['treasury', 'Banking / Treasury'],
+  ['operating_expenses', 'Operating Expenses'], ['expense_categories', 'Expense Categories'],
   ['reports', 'Reports'],
 ];
 
@@ -174,6 +183,9 @@ const CRUMBS = {
   '/debit-notes': 'Payables › Debit Notes',
   '/products': 'Masters › Products',
   '/expenses': 'Receivables › Expenses',
+  '/operating-expenses': 'P&L / Expenses › Operating Expenses',
+  '/expense-categories': 'P&L / Expenses › Expense Categories',
+  '/reports/profit-loss': 'Reports › Profit & Loss',
   '/treasury': 'Treasury › Overview',
   '/treasury/update': 'Treasury › Update balances',
   '/treasury/facilities': 'Treasury › Manage facilities',

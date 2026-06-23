@@ -20,6 +20,9 @@ import ReceiptForm from './pages/ReceiptForm.jsx';
 import CreditNotes from './pages/CreditNotes.jsx';
 import CreditNoteForm from './pages/CreditNoteForm.jsx';
 import Expenses from './pages/Expenses.jsx';
+import ExpenseCategories from './pages/ExpenseCategories.jsx';
+import OperatingExpenses from './pages/OperatingExpenses.jsx';
+import ReportProfitLoss from './pages/ReportProfitLoss.jsx';
 
 import Vendors from './pages/Vendors.jsx';
 import VendorForm from './pages/VendorForm.jsx';
@@ -105,6 +108,10 @@ function MainApp() {
 
         <Route path="/products" element={<Products />} />
 
+        <Route path="/operating-expenses" element={<OperatingExpenses />} />
+        <Route path="/expense-categories" element={<ExpenseCategories />} />
+
+        <Route path="/reports/profit-loss" element={<ReportProfitLoss />} />
         <Route path="/reports/aging" element={<ReportAging />} />
         <Route path="/reports/tax" element={<ReportTax />} />
         <Route path="/reports/pnl" element={<ReportPnl />} />
