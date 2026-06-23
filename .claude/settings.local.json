@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import pypdf; print\\('pypdf ok'\\)\")",
+      "Bash(python3 -c \"import PyPDF2; print\\('PyPDF2 ok'\\)\")",
+      "Bash(python3 -c \"import pdfplumber; print\\('pdfplumber ok'\\)\")",
+      "Bash(brew --prefix poppler)",
+      "Bash(pip3 install *)",
+      "Bash(python3 -c \"import pypdf; print\\('installed'\\)\")",
+      "Bash(python3 -c ' *)",
+      "Read(//tmp/**)",
+      "Bash(mkdir -p /Users/macbookpro/Documents/stockscreener && echo created)",
+      "WebSearch"
+    ]
+  }
+}

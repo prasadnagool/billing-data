@@ -1,0 +1,17 @@
+{
+  "name": "po-invoice-tracker-server",
+  "version": "1.0.0",
+  "description": "PO & Invoice Tracker — Express + SQLite backend",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "multer": "^2.2.0"
+  }
+}

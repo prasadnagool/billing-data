@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "app", "runtimeExecutable": "node", "runtimeArgs": ["src/index.js"], "cwd": "server", "port": 4000 }
+  ]
+}
