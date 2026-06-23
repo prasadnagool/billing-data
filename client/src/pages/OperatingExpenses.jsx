@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useFetch } from '../hooks.js';
 import { api } from '../api.js';
 import { PageHeader, DataTable, Amt } from '../components/ui.jsx';
-import { Field, FormRow, Input, Select, Textarea } from '../components/form.jsx';
+import { Field, Input, Select } from '../components/form.jsx';
 import { fmtDate, today } from '../format.js';
 import { canEdit } from '../auth.js';
 
@@ -18,6 +18,7 @@ export default function OperatingExpenses() {
   const { data: vendors } = useFetch('/vendors');
   const [form, setForm] = useState(blank);
   const [open, setOpen] = useState(false);
+  const [formKey, setFormKey] = useState(0); // bump to remount form → re-fire autoFocus
   const editable = canEdit('operating_expenses');
   const categories = cats || [];
 
@@ -44,7 +45,7 @@ export default function OperatingExpenses() {
     setOpen(true);
   };
 
-  const save = async () => {
+  const save = async (keepOpen = false) => {
     if (!form.expense_date) return alert('Expense date required');
     if (!form.category_id) return alert('Category required');
     const body = {
@@ -56,7 +57,12 @@ export default function OperatingExpenses() {
     try {
       if (form.id) await api.patch(`/operating-expenses/${form.id}`, body);
       else await api.post('/operating-expenses', body);
-      setOpen(false); reload();
+      reload();
+      if (keepOpen) {
+        // Keep date + payment mode for fast batch entry; clear the rest and refocus.
+        setForm((f) => ({ ...blank(), expense_date: f.expense_date, payment_mode: f.payment_mode }));
+        setFormKey((k) => k + 1);
+      } else setOpen(false);
     } catch (e) { alert(e.message); }
   };
   const del = async (r) => { if (!confirm(`Delete expense ${r.expense_no || ''}?`)) return; try { await api.delete(`/operating-expenses/${r.id}`); reload(); } catch (e) { alert(e.message); } };
@@ -80,35 +86,42 @@ export default function OperatingExpenses() {
       </div>
 
       {open && (
-        <div className="card p-4 mb-4">
-          <div className="text-sm font-semibold mb-3">{form.id ? `Edit expense ${form.id ? '' : ''}` : 'New expense'}</div>
-          <FormRow cols={3}>
-            <Field label="Date *"><Input type="date" value={form.expense_date} onChange={set('expense_date')} /></Field>
+        <form key={formKey} className="card p-4 mb-4" onSubmit={(e) => { e.preventDefault(); save(false); }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-semibold">{form.id ? 'Edit expense' : 'New expense'}</div>
+            <div className="text-[11px] text-muted">Tab between fields · Enter to save</div>
+          </div>
+          {/* Uniform 3-column grid: every cell is the same height; money fields come
+              right after the category so entry flows top-to-bottom, left-to-right. */}
+          <div className="grid grid-cols-3 gap-3 mb-3 items-start">
+            <Field label="Date *"><Input type="date" autoFocus value={form.expense_date} onChange={set('expense_date')} /></Field>
             <Field label="Category *"><Select value={form.category_id} onChange={onCategory}>
               <option value="">— Select —</option>
               {categories.filter((c) => c.active !== 0).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select></Field>
+            <Field label="Amount (₹, ex-GST)"><Input type="number" step="0.01" value={form.amount} onChange={set('amount')} /></Field>
+
+            <Field label="GST rate (%)"><Input type="number" step="0.01" value={form.gst_rate} onChange={set('gst_rate')} /></Field>
+            <Field label="TDS section"><Input value={form.tds_section} onChange={set('tds_section')} placeholder="e.g. 194I" /></Field>
+            <Field label="TDS rate (%)"><Input type="number" step="0.01" value={form.tds_rate} onChange={set('tds_rate')} /></Field>
+
             <Field label="Payment mode"><Select value={form.payment_mode} onChange={set('payment_mode')}>{PAY_MODES.map((m) => <option key={m} value={m}>{m}</option>)}</Select></Field>
-          </FormRow>
-          <FormRow cols={2}>
             <Field label="Payee (name)"><Input value={form.payee} onChange={set('payee')} placeholder="Employee / landlord / supplier" /></Field>
             <Field label="Link vendor (optional)"><Select value={form.vendor_id} onChange={set('vendor_id')}>
               <option value="">— none —</option>
               {(vendors || []).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
             </Select></Field>
-          </FormRow>
-          <FormRow cols={1}><Field label="Description"><Input value={form.description} onChange={set('description')} /></Field></FormRow>
-          <FormRow cols={4}>
-            <Field label="Amount (₹, ex-GST)"><Input type="number" value={form.amount} onChange={set('amount')} /></Field>
-            <Field label="GST rate (%)"><Input type="number" value={form.gst_rate} onChange={set('gst_rate')} /></Field>
-            <Field label="TDS section"><Input value={form.tds_section} onChange={set('tds_section')} placeholder="e.g. 194I" /></Field>
-            <Field label="TDS rate (%)"><Input type="number" value={form.tds_rate} onChange={set('tds_rate')} /></Field>
-          </FormRow>
-          <div className="flex items-center gap-5 mb-3 text-xs">
-            <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={form.itc_eligible} onChange={(e) => setForm((f) => ({ ...f, itc_eligible: e.target.checked }))} /> ITC eligible</label>
-            <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={form.is_recurring} onChange={(e) => setForm((f) => ({ ...f, is_recurring: e.target.checked }))} /> Recurring expense</label>
+
+            <Field className="col-span-2" label="Description"><Input value={form.description} onChange={set('description')} /></Field>
+            <Field label="Options">
+              <div className="flex items-center gap-4 h-[34px] text-xs">
+                <label className="flex items-center gap-1.5 cursor-pointer whitespace-nowrap"><input type="checkbox" checked={form.itc_eligible} onChange={(e) => setForm((f) => ({ ...f, itc_eligible: e.target.checked }))} /> ITC</label>
+                <label className="flex items-center gap-1.5 cursor-pointer whitespace-nowrap"><input type="checkbox" checked={form.is_recurring} onChange={(e) => setForm((f) => ({ ...f, is_recurring: e.target.checked }))} /> Recurring</label>
+              </div>
+            </Field>
+
+            <Field className="col-span-3" label="Notes"><Input value={form.notes} onChange={set('notes')} /></Field>
           </div>
-          <FormRow cols={1}><Field label="Notes"><Textarea rows={2} value={form.notes} onChange={set('notes')} /></Field></FormRow>
           {/* Live computed preview */}
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs bg-bg2 rounded-md px-3 py-2 mb-3">
             <span className="text-muted">Base <b className="text-ink">₹ {base.toLocaleString('en-IN')}</b></span>
@@ -117,17 +130,18 @@ export default function OperatingExpenses() {
             <span className="text-muted">TDS <b className="text-ink">₹ {tds.toLocaleString('en-IN')}</b></span>
             <span className="text-muted">Net paid <b className="text-ink">₹ {net.toLocaleString('en-IN')}</b></span>
           </div>
-          <div className="flex gap-2">
-            <button className="btn btn-primary" onClick={save}>{form.id ? 'Update' : 'Save expense'}</button>
-            <button className="btn" onClick={() => setOpen(false)}>Cancel</button>
+          <div className="flex gap-2 items-center">
+            <button type="submit" className="btn btn-primary">{form.id ? 'Update' : 'Save expense'}</button>
+            {!form.id && <button type="button" className="btn" onClick={() => save(true)}>Save &amp; add another</button>}
+            <button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button>
             {form.id && (
-              <button className="btn text-danger border-danger/50 ml-auto"
+              <button type="button" className="btn text-danger border-danger/50 ml-auto"
                 onClick={async () => { if (!confirm('Delete this expense? This cannot be undone.')) return; try { await api.delete(`/operating-expenses/${form.id}`); setOpen(false); reload(); } catch (e) { alert(e.message); } }}>
                 Delete expense
               </button>
             )}
           </div>
-        </div>
+        </form>
       )}
 
       <DataTable rows={loading ? [] : (data?.rows || [])} onRowClick={editable ? openEdit : undefined}
