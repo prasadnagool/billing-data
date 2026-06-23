@@ -10,7 +10,8 @@ const TYPES = [
   ['payment', 'Payments (money out)'],
   ['credit_note', 'Credit Notes'],
   ['debit_note', 'Debit Notes'],
-  ['expense', 'Expenses'],
+  ['expense', 'PO Expenses'],
+  ['operating_expense', 'Operating Expenses (P&L)'],
 ];
 
 function fyStart() {

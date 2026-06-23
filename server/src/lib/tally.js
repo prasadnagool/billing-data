@@ -15,7 +15,7 @@ const L = {
   oCgst: 'Output CGST', oSgst: 'Output SGST', oIgst: 'Output IGST',
   iCgst: 'Input CGST', iSgst: 'Input SGST', iIgst: 'Input IGST',
   tdsRecv: 'TDS Receivable', tdsPay: 'TDS Payable',
-  bank: 'Bank', expense: 'Other Expenses', roundoff: 'Round Off',
+  bank: 'Bank', cash: 'Cash', expense: 'Other Expenses', roundoff: 'Round Off',
 };
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -92,6 +92,25 @@ function collectVouchers({ from, to, types }) {
     for (const e of db.prepare(`SELECT * FROM po_expenses WHERE client_po_id IN (SELECT id FROM client_pos WHERE ${EXCL_DIS_CLIENT}) AND ${between('expense_date')}`).all(from, to)) {
       add('expense', { type: 'Payment', date: e.expense_date, number: 'EXP-' + e.id.slice(0, 8), party: L.expense,
         lines: [ln(L.expense, e.amount, 'dr'), ln(L.bank, e.amount, 'cr')] });
+    }
+  }
+  if (want.has('operating_expense')) {
+    counts.operating_expense = 0;
+    for (const e of db.prepare(`SELECT e.*, c.name AS category_name FROM operating_expenses e LEFT JOIN expense_categories c ON c.id=e.category_id WHERE ${between('e.expense_date')}`).all(from, to)) {
+      const expLedger = e.category_name || L.expense;
+      const lines = [];
+      if (e.itc_eligible && e.gst_amount > 0) {
+        // ITC claimable: book GST to Input GST ledgers, expense at the base value.
+        lines.push(ln(expLedger, e.amount, 'dr'));
+        lines.push(...gstLns(true, e.gst_amount, 'input', 'dr'));
+      } else {
+        // No ITC: GST is part of the cost — debit the expense for the gross.
+        lines.push(ln(expLedger, e.amount + (e.gst_amount || 0), 'dr'));
+      }
+      if (e.tds_amount > 0) lines.push(ln(L.tdsPay, e.tds_amount, 'cr'));
+      const payAcct = (e.payment_mode === 'Cash' || e.payment_mode === 'Petty Cash') ? L.cash : L.bank;
+      lines.push(ln(payAcct, e.net_paid, 'cr'));
+      add('operating_expense', { type: 'Payment', date: e.expense_date, number: e.expense_no || ('EXP-' + e.id.slice(0, 8)), party: e.payee || expLedger, lines });
     }
   }
   return { vouchers: V, counts };
