@@ -40,6 +40,7 @@ export default function OperatingExpenses() {
     if (!p) { setForm((f) => ({ ...f, payee: v })); return; }
     setForm((f) => ({
       ...f, payee: p.name,
+      description: p.default_description || f.description,
       amount: p.default_amount ? (p.default_amount / 100).toString() : f.amount,
       gst_rate: p.default_gst_rate || f.gst_rate,
       tds_section: p.default_tds_section || f.tds_section,

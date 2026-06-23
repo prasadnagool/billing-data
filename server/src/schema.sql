@@ -541,6 +541,7 @@ CREATE TABLE IF NOT EXISTS expense_payees (
   id                   TEXT PRIMARY KEY,
   category_id          TEXT NOT NULL REFERENCES expense_categories(id) ON DELETE CASCADE,
   name                 TEXT NOT NULL,
+  default_description  TEXT,
   default_amount       INTEGER DEFAULT 0,   -- paise, ex-GST
   default_gst_rate     REAL DEFAULT 0,
   default_tds_section  TEXT,

@@ -72,8 +72,8 @@ r.post('/expense-payees', (req, res) => {
   if (!b.category_id) return res.status(400).json({ error: 'Category required' });
   if (!b.name || !String(b.name).trim()) return res.status(400).json({ error: 'Payee name required' });
   const id = uuid(); const ts = now();
-  db.prepare(`INSERT INTO expense_payees (id,category_id,name,default_amount,default_gst_rate,default_tds_section,default_tds_rate,default_payment_mode,sort,active,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,1,?,?)`).run(id, b.category_id, String(b.name).trim(), paise(b.default_amount),
+  db.prepare(`INSERT INTO expense_payees (id,category_id,name,default_description,default_amount,default_gst_rate,default_tds_section,default_tds_rate,default_payment_mode,sort,active,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?)`).run(id, b.category_id, String(b.name).trim(), b.default_description || '', paise(b.default_amount),
     Number(b.default_gst_rate) || 0, b.default_tds_section || '', Number(b.default_tds_rate) || 0,
     b.default_payment_mode || 'Bank', Number(b.sort) || 0, ts, ts);
   res.status(201).json(db.prepare('SELECT * FROM expense_payees WHERE id=?').get(id));
@@ -83,9 +83,10 @@ r.patch('/expense-payees/:id', (req, res) => {
   const p = db.prepare('SELECT * FROM expense_payees WHERE id=?').get(req.params.id);
   if (!p) return res.status(404).json({ error: 'Not found' });
   const b = req.body || {};
-  db.prepare(`UPDATE expense_payees SET name=?, default_amount=?, default_gst_rate=?, default_tds_section=?, default_tds_rate=?, default_payment_mode=?, active=?, updated_at=? WHERE id=?`)
+  db.prepare(`UPDATE expense_payees SET name=?, default_description=?, default_amount=?, default_gst_rate=?, default_tds_section=?, default_tds_rate=?, default_payment_mode=?, active=?, updated_at=? WHERE id=?`)
     .run(
       b.name != null ? String(b.name).trim() : p.name,
+      b.default_description != null ? b.default_description : p.default_description,
       b.default_amount != null ? paise(b.default_amount) : p.default_amount,
       b.default_gst_rate != null ? Number(b.default_gst_rate) : p.default_gst_rate,
       b.default_tds_section != null ? b.default_tds_section : p.default_tds_section,

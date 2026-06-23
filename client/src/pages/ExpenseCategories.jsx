@@ -73,7 +73,7 @@ export default function ExpenseCategories() {
 }
 
 const PAY_MODES = ['Bank', 'Cash', 'Petty Cash', 'UPI', 'Card'];
-const pblank = () => ({ name: '', default_amount: '', default_tds_section: '', default_tds_rate: '', default_payment_mode: 'Bank' });
+const pblank = () => ({ name: '', default_description: '', default_amount: '', default_tds_section: '', default_tds_rate: '', default_payment_mode: 'Bank' });
 
 // Manage the saved payees under one category (e.g. landlords under "Rent").
 function PayeeManager({ category, editable, onClose }) {
@@ -84,7 +84,8 @@ function PayeeManager({ category, editable, onClose }) {
     if (!f.name.trim()) return alert('Payee name required');
     try {
       await api.post('/expense-payees', {
-        category_id: category.id, name: f.name, default_amount: Math.round((Number(f.default_amount) || 0) * 100),
+        category_id: category.id, name: f.name, default_description: f.default_description,
+        default_amount: Math.round((Number(f.default_amount) || 0) * 100),
         default_tds_section: f.default_tds_section, default_tds_rate: Number(f.default_tds_rate) || 0, default_payment_mode: f.default_payment_mode,
       });
       setF(pblank()); reload();
@@ -103,6 +104,7 @@ function PayeeManager({ category, editable, onClose }) {
       <DataTable rows={loading ? [] : data} empty="No payees yet — add one below."
         columns={[
           { header: 'Payee', key: 'name' },
+          { header: 'Default description', render: (p) => p.default_description || '—' },
           { header: 'Default amount', num: true, render: (p) => p.default_amount ? `₹ ${(p.default_amount / 100).toLocaleString('en-IN')}` : '—' },
           { header: 'TDS', render: (p) => p.default_tds_section ? `${p.default_tds_section} · ${p.default_tds_rate}%` : '—' },
           { header: 'Mode', key: 'default_payment_mode' },
@@ -110,9 +112,10 @@ function PayeeManager({ category, editable, onClose }) {
         ]} />
 
       {editable && (
-        <div className="grid grid-cols-5 gap-3 mt-3 items-end">
+        <div className="grid grid-cols-6 gap-3 mt-3 items-end">
           <Field label="Payee name"><Input value={f.name} onChange={set('name')} placeholder="e.g. Sarala Vijaykumaran Pillai" /></Field>
-          <Field label="Default amount (₹)"><Input type="number" step="0.01" value={f.default_amount} onChange={set('default_amount')} /></Field>
+          <Field label="Default description"><Input value={f.default_description} onChange={set('default_description')} placeholder="e.g. Rent for the month" /></Field>
+          <Field label="Default amount (₹, optional)"><Input type="number" step="0.01" value={f.default_amount} onChange={set('default_amount')} /></Field>
           <Field label="TDS section"><Input value={f.default_tds_section} onChange={set('default_tds_section')} placeholder="194I" /></Field>
           <Field label="TDS rate (%)"><Input type="number" step="0.01" value={f.default_tds_rate} onChange={set('default_tds_rate')} /></Field>
           <button className="btn btn-primary" onClick={add}>+ Add payee</button>

@@ -108,6 +108,9 @@ if (!hasSuper) {
   console.log('[db] created super admin "prasad"');
 }
 
+// Per-payee default description (e.g. "Rent for the month") — added later.
+ensureColumns('expense_payees', [['default_description', 'TEXT']]);
+
 // Seed default expense categories (idempotent — only when the table is empty).
 const catCount = db.prepare('SELECT COUNT(*) AS n FROM expense_categories').get().n;
 if (catCount === 0) {
