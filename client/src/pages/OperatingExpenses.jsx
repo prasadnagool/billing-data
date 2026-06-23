@@ -117,7 +117,16 @@ export default function OperatingExpenses() {
             <span className="text-muted">TDS <b className="text-ink">₹ {tds.toLocaleString('en-IN')}</b></span>
             <span className="text-muted">Net paid <b className="text-ink">₹ {net.toLocaleString('en-IN')}</b></span>
           </div>
-          <div className="flex gap-2"><button className="btn btn-primary" onClick={save}>{form.id ? 'Update' : 'Save expense'}</button><button className="btn" onClick={() => setOpen(false)}>Cancel</button></div>
+          <div className="flex gap-2">
+            <button className="btn btn-primary" onClick={save}>{form.id ? 'Update' : 'Save expense'}</button>
+            <button className="btn" onClick={() => setOpen(false)}>Cancel</button>
+            {form.id && (
+              <button className="btn text-danger border-danger/50 ml-auto"
+                onClick={async () => { if (!confirm('Delete this expense? This cannot be undone.')) return; try { await api.delete(`/operating-expenses/${form.id}`); setOpen(false); reload(); } catch (e) { alert(e.message); } }}>
+                Delete expense
+              </button>
+            )}
+          </div>
         </div>
       )}
 

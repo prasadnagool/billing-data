@@ -79,7 +79,7 @@ export function Card({ title, children, actions, className = '' }) {
 // footer (optional): array aligned to columns; each entry is a node, or null for a blank cell.
 export function DataTable({ columns, rows, onRowClick, empty = 'No records', footer }) {
   return (
-    <div className="card p-0 overflow-hidden">
+    <div className="card p-0 overflow-x-auto">
       <table className="w-full border-collapse text-xs">
         <thead>
           <tr>
