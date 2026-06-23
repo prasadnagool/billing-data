@@ -58,6 +58,50 @@ r.delete('/expense-categories/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// ===================== Expense Payees (per category) =====================
+r.get('/expense-payees', (req, res) => {
+  const { category_id } = req.query;
+  const rows = category_id
+    ? db.prepare('SELECT * FROM expense_payees WHERE category_id=? ORDER BY sort, name').all(category_id)
+    : db.prepare('SELECT * FROM expense_payees ORDER BY category_id, sort, name').all();
+  res.json(rows);
+});
+
+r.post('/expense-payees', (req, res) => {
+  const b = req.body || {};
+  if (!b.category_id) return res.status(400).json({ error: 'Category required' });
+  if (!b.name || !String(b.name).trim()) return res.status(400).json({ error: 'Payee name required' });
+  const id = uuid(); const ts = now();
+  db.prepare(`INSERT INTO expense_payees (id,category_id,name,default_amount,default_gst_rate,default_tds_section,default_tds_rate,default_payment_mode,sort,active,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,1,?,?)`).run(id, b.category_id, String(b.name).trim(), paise(b.default_amount),
+    Number(b.default_gst_rate) || 0, b.default_tds_section || '', Number(b.default_tds_rate) || 0,
+    b.default_payment_mode || 'Bank', Number(b.sort) || 0, ts, ts);
+  res.status(201).json(db.prepare('SELECT * FROM expense_payees WHERE id=?').get(id));
+});
+
+r.patch('/expense-payees/:id', (req, res) => {
+  const p = db.prepare('SELECT * FROM expense_payees WHERE id=?').get(req.params.id);
+  if (!p) return res.status(404).json({ error: 'Not found' });
+  const b = req.body || {};
+  db.prepare(`UPDATE expense_payees SET name=?, default_amount=?, default_gst_rate=?, default_tds_section=?, default_tds_rate=?, default_payment_mode=?, active=?, updated_at=? WHERE id=?`)
+    .run(
+      b.name != null ? String(b.name).trim() : p.name,
+      b.default_amount != null ? paise(b.default_amount) : p.default_amount,
+      b.default_gst_rate != null ? Number(b.default_gst_rate) : p.default_gst_rate,
+      b.default_tds_section != null ? b.default_tds_section : p.default_tds_section,
+      b.default_tds_rate != null ? Number(b.default_tds_rate) : p.default_tds_rate,
+      b.default_payment_mode != null ? b.default_payment_mode : p.default_payment_mode,
+      b.active != null ? (b.active ? 1 : 0) : p.active,
+      now(), p.id,
+    );
+  res.json(db.prepare('SELECT * FROM expense_payees WHERE id=?').get(p.id));
+});
+
+r.delete('/expense-payees/:id', (req, res) => {
+  db.prepare('DELETE FROM expense_payees WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+});
+
 // ===================== Operating Expenses ledger =====================
 const OPEX_SELECT = `SELECT e.*, c.name AS category_name, c.kind AS category_kind, v.name AS vendor_name
   FROM operating_expenses e

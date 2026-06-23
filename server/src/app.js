@@ -28,6 +28,7 @@ const WRITE_MODULE = [
   [/^\/expenses/, 'expenses'],
   [/^\/operating-expenses/, 'operating_expenses'],
   [/^\/expense-categories/, 'expense_categories'],
+  [/^\/expense-payees/, 'expense_categories'],
   [/^\/vendor-pos/, 'vendor_pos'],
   [/^\/vendor-invoices/, 'vendor_invoices'],
   [/^\/vendors/, 'vendors'],

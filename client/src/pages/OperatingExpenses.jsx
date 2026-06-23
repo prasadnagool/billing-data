@@ -16,16 +16,36 @@ export default function OperatingExpenses() {
   const { data, loading, reload } = useFetch(`/operating-expenses${qs ? '?' + qs : ''}`);
   const { data: cats } = useFetch('/expense-categories');
   const { data: vendors } = useFetch('/vendors');
+  const { data: payees } = useFetch('/expense-payees');
   const [form, setForm] = useState(blank);
   const [open, setOpen] = useState(false);
   const [formKey, setFormKey] = useState(0); // bump to remount form → re-fire autoFocus
+  const [payeeManual, setPayeeManual] = useState(false);
   const editable = canEdit('operating_expenses');
   const categories = cats || [];
+  // Saved payees for the currently-selected category (e.g. landlords under Rent).
+  const catPayees = (payees || []).filter((p) => p.category_id === form.category_id && p.active !== 0);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const onCategory = (e) => {
     const c = categories.find((x) => x.id === e.target.value);
-    setForm((f) => ({ ...f, category_id: e.target.value, tds_section: c?.default_tds_section || '', tds_rate: c?.default_tds_rate || '' }));
+    setPayeeManual(false);
+    setForm((f) => ({ ...f, category_id: e.target.value, payee: '', tds_section: c?.default_tds_section || '', tds_rate: c?.default_tds_rate || '' }));
+  };
+  // Picking a saved payee fills the name + its default amount / GST / TDS / mode.
+  const onPickPayee = (e) => {
+    const v = e.target.value;
+    if (v === '__manual') { setPayeeManual(true); setForm((f) => ({ ...f, payee: '' })); return; }
+    const p = catPayees.find((x) => x.name === v);
+    if (!p) { setForm((f) => ({ ...f, payee: v })); return; }
+    setForm((f) => ({
+      ...f, payee: p.name,
+      amount: p.default_amount ? (p.default_amount / 100).toString() : f.amount,
+      gst_rate: p.default_gst_rate || f.gst_rate,
+      tds_section: p.default_tds_section || f.tds_section,
+      tds_rate: p.default_tds_rate || f.tds_rate,
+      payment_mode: p.default_payment_mode || f.payment_mode,
+    }));
   };
 
   // Live preview (rupees in the form)
@@ -35,8 +55,9 @@ export default function OperatingExpenses() {
   const gross = base + gst;
   const net = gross - tds;
 
-  const startAdd = () => { setForm(blank()); setOpen(true); };
+  const startAdd = () => { setForm(blank()); setPayeeManual(false); setOpen(true); };
   const openEdit = (r) => {
+    setPayeeManual(true);
     setForm({
       id: r.id, expense_date: r.expense_date, category_id: r.category_id || '', payee: r.payee || '', vendor_id: r.vendor_id || '',
       description: r.description || '', amount: (r.amount / 100).toString(), gst_rate: r.gst_rate || '', itc_eligible: !!r.itc_eligible,
@@ -106,7 +127,17 @@ export default function OperatingExpenses() {
             <Field label="TDS rate (%)"><Input type="number" step="0.01" value={form.tds_rate} onChange={set('tds_rate')} /></Field>
 
             <Field label="Payment mode"><Select value={form.payment_mode} onChange={set('payment_mode')}>{PAY_MODES.map((m) => <option key={m} value={m}>{m}</option>)}</Select></Field>
-            <Field label="Payee (name)"><Input value={form.payee} onChange={set('payee')} placeholder="Employee / landlord / supplier" /></Field>
+            <Field label="Payee (name)">
+              {catPayees.length > 0 && !payeeManual ? (
+                <Select value={form.payee} onChange={onPickPayee}>
+                  <option value="">— Select payee —</option>
+                  {catPayees.map((p) => <option key={p.id} value={p.name}>{p.name}{p.default_amount ? ` · ₹${(p.default_amount / 100).toLocaleString('en-IN')}` : ''}</option>)}
+                  <option value="__manual">+ Other (type a name)…</option>
+                </Select>
+              ) : (
+                <Input value={form.payee} onChange={set('payee')} placeholder="Employee / landlord / supplier" />
+              )}
+            </Field>
             <Field label="Link vendor (optional)"><Select value={form.vendor_id} onChange={set('vendor_id')}>
               <option value="">— none —</option>
               {(vendors || []).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}

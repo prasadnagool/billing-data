@@ -533,3 +533,22 @@ CREATE TABLE IF NOT EXISTS operating_expenses (
 );
 CREATE INDEX IF NOT EXISTS idx_opex_date     ON operating_expenses(expense_date);
 CREATE INDEX IF NOT EXISTS idx_opex_category ON operating_expenses(category_id);
+
+-- Saved payees per expense category (e.g. landlords under "Rent"). Picking one
+-- in the expense form auto-fills the payee name + default amount/GST/TDS so
+-- repeat entries (monthly rent to the same people) need almost no typing.
+CREATE TABLE IF NOT EXISTS expense_payees (
+  id                   TEXT PRIMARY KEY,
+  category_id          TEXT NOT NULL REFERENCES expense_categories(id) ON DELETE CASCADE,
+  name                 TEXT NOT NULL,
+  default_amount       INTEGER DEFAULT 0,   -- paise, ex-GST
+  default_gst_rate     REAL DEFAULT 0,
+  default_tds_section  TEXT,
+  default_tds_rate     REAL DEFAULT 0,
+  default_payment_mode TEXT DEFAULT 'Bank',
+  sort                 INTEGER DEFAULT 0,
+  active               INTEGER DEFAULT 1,
+  created_at           TEXT NOT NULL,
+  updated_at           TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_payees_category ON expense_payees(category_id);
