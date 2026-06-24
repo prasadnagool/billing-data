@@ -553,17 +553,3 @@ CREATE TABLE IF NOT EXISTS expense_payees (
   updated_at           TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_payees_category ON expense_payees(category_id);
-
--- Keyboard shortcuts: customizable hotkeys for main functionality
-CREATE TABLE IF NOT EXISTS keyboard_shortcuts (
-  id                   TEXT PRIMARY KEY,
-  user_id              TEXT REFERENCES app_users(id) ON DELETE CASCADE,
-  action_key           TEXT NOT NULL,
-  keys                 TEXT NOT NULL,
-  description          TEXT,
-  category             TEXT DEFAULT 'General',
-  created_at           TEXT NOT NULL,
-  updated_at           TEXT NOT NULL,
-  UNIQUE(user_id, action_key)
-);
-CREATE INDEX IF NOT EXISTS idx_shortcuts_user ON keyboard_shortcuts(user_id);

@@ -54,7 +54,6 @@ import AdminUsers from './pages/AdminUsers.jsx';
 import AdminRoles from './pages/AdminRoles.jsx';
 import AdminBackups from './pages/AdminBackups.jsx';
 import AdminFinancialYear from './pages/AdminFinancialYear.jsx';
-import KeyboardShortcuts from './pages/KeyboardShortcuts.jsx';
 
 export default function App() {
   if (!getAuth()?.token) return <Login />;
@@ -128,7 +127,6 @@ function MainApp() {
         <Route path="/admin/roles" element={<AdminRoles />} />
         <Route path="/admin/backups" element={<AdminBackups />} />
         <Route path="/admin/financial-year" element={<AdminFinancialYear />} />
-        <Route path="/admin/keyboard-shortcuts" element={<KeyboardShortcuts />} />
       </Routes>
     </Layout>
   );

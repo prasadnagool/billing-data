@@ -48,7 +48,13 @@
       "Bash(git commit -m 'Sidebar: auto-expand section containing current page for easier navigation *)",
       "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'cd /opt/billingdata && unzip -o /opt/kgreen-po-tracker.zip >/dev/null && pm2 restart po-tracker --update-env >/dev/null && sleep 1 && echo deployed')",
       "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'cd /opt/billingdata && unzip -o /opt/kgreen-po-tracker.zip >/dev/null && pm2 restart po-tracker --update-env >/dev/null && sleep 1 && echo \"✓ Deployed\"')",
-      "Bash(git commit -m 'Sidebar: only active section expanded, all others collapsed *)"
+      "Bash(git commit -m 'Sidebar: only active section expanded, all others collapsed *)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'pm2 logs po-tracker --lines 50 2>&1 | tail -40')",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'cd /opt/billingdata && npm list 2>&1 | grep -i shortcut')",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'cd /opt/billingdata && unzip -o /opt/kgreen-po-tracker.zip >/dev/null && pm2 restart po-tracker --update-env >/dev/null && sleep 2 && echo \"✓ Restarted\"')",
+      "Bash(git commit -m 'Fix: define requireAuth middleware in shortcuts route *)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'cd /opt/billingdata && unzip -o /opt/kgreen-po-tracker.zip >/dev/null && pm2 restart po-tracker --update-env >/dev/null && sleep 2 && echo \"✓ Deployed\"')",
+      "Bash(git commit -m 'Remove keyboard shortcuts functionality *)"
     ]
   }
 }
