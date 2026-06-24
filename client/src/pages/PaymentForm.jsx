@@ -20,7 +20,8 @@ export default function PaymentForm() {
   // Default to the IDFC OD account if present, else the first account.
   useEffect(() => {
     if (banks.length && !form.bank_account) {
-      const pref = banks.find((b) => /idfc/i.test(b.name) && b.type === 'OD') || banks.find((b) => /idfc/i.test(b.name)) || banks[0];
+      const pref = banks.find((b) => [b.name, b.notes].some((x) => x && x.includes('10236082153')))
+        || banks.find((b) => /idfc/i.test(b.name) && b.type === 'OD') || banks.find((b) => /idfc/i.test(b.name)) || banks[0];
       setForm((f) => ({ ...f, bank_account: pref.name }));
     }
   }, [banks.length]); // eslint-disable-line
