@@ -102,6 +102,14 @@ export default function ReceiptForm() {
       </Card>
 
       <Card title={`Allocate to invoices${foreign ? ` (${currency})` : ''}`}>
+        {openInvoices.length > 0 && (
+          <Field label="Pick an invoice to link (applies its full balance — editable below)" className="mb-3">
+            <Select value="" onChange={(e) => { const inv = openInvoices.find((i) => i.id === e.target.value); if (!inv) return; setAllocs((a) => ({ ...a, [inv.id]: inv.balance / 100 })); if (!form.gross) setForm((f) => ({ ...f, gross: inv.balance })); }}>
+              <option value="">— Select invoice —</option>
+              {openInvoices.map((i) => <option key={i.id} value={i.id} disabled={!!allocs[i.id]}>{i.invoice_no} · {i.po_no} · {fmtCur(i.balance, currency)}{allocs[i.id] ? ' (linked)' : ''}</option>)}
+            </Select>
+          </Field>
+        )}
         {openInvoices.length === 0 ? (
           <p className="text-muted text-xs">No open invoices for this client. The receipt will be saved as unallocated.</p>
         ) : (
