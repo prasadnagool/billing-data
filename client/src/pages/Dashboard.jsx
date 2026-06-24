@@ -285,6 +285,7 @@ const WIDGETS = [
         <button className="btn" onClick={() => nav('/client-invoices/new')}>+ Invoice</button>
         <button className="btn" onClick={() => nav('/client-payments/new')}>+ Record receipt</button>
         <button className="btn" onClick={() => nav('/vendor-invoices/new')}>+ Vendor invoice</button>
+        <button className="btn" onClick={() => nav('/operating-expenses?new=1')}>+ Operating expense</button>
         <button className="btn" onClick={() => nav('/treasury/update')}>Update balances</button>
       </div>
     </Card>

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useFetch } from '../hooks.js';
 import { api } from '../api.js';
 import { PageHeader, DataTable, Amt } from '../components/ui.jsx';
@@ -21,6 +22,8 @@ export default function OperatingExpenses() {
   const [open, setOpen] = useState(false);
   const [formKey, setFormKey] = useState(0); // bump to remount form → re-fire autoFocus
   const [payeeManual, setPayeeManual] = useState(false);
+  const [sp] = useSearchParams();
+  useEffect(() => { if (sp.get('new')) { setForm(blank()); setPayeeManual(false); setOpen(true); } }, []); // eslint-disable-line
   const editable = canEdit('operating_expenses');
   const categories = cats || [];
   // Saved payees for the currently-selected category (e.g. landlords under Rent).
