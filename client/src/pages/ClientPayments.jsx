@@ -11,7 +11,8 @@ export default function ClientPayments() {
   const nav = useNavigate();
   const [period, setPeriod] = useState('month');
   const { data, loading } = useFetch('/receipts');
-  const { data: clients } = useFetch('/clients?active=1');
+  const { data: clientsData } = useFetch('/clients?page=1&limit=1000&search=');
+  const clients = clientsData?.clients || [];
   const rows = (data || []).filter((r) => inPeriod(r.date, period));
 
   // Quick record: search client → show their open invoices → pick one → record.

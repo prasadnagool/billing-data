@@ -10,7 +10,8 @@ const REASONS = ['Sales return', 'Rate correction', 'Post-supply discount', 'Can
 
 export default function CreditNoteForm() {
   const nav = useNavigate();
-  const { data: clients } = useFetch('/clients?active=1');
+  const { data } = useFetch('/clients?page=1&limit=1000&search=');
+  const clients = data?.clients || [];
   const [form, setForm] = useState({ client_id: '', original_invoice_id: '', date: today(), reason: REASONS[0], reason_details: '', apply_to_balance: true });
   const [invoices, setInvoices] = useState([]);
   const [amount, setAmount] = useState(0);

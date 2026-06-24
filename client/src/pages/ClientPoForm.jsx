@@ -12,8 +12,9 @@ const addMonths = (s, n) => { if (!s) return ''; const [y, m, d] = s.split('-').
 
 export default function ClientPoForm() {
   const nav = useNavigate();
-  const { data: clients, reload: reloadClients } = useFetch('/clients?active=1');
+  const { data, reload: reloadClients } = useFetch('/clients?page=1&limit=1000&search=');
   const { data: products } = useFetch('/products');
+  const clients = data?.clients || [];
   const [form, setForm] = useState({ client_id: '', our_po_no: '', client_po_ref: '', po_date: today(), expected_delivery: '', payment_terms: 'Net 30', gst_treatment: 'IGST', place_of_supply: '', notes: '', renewal_date: addMonths(today(), 9) });
   const [renewalTouched, setRenewalTouched] = useState(false);
   // Keep renewal date = PO date + 9 months until the user edits it manually.

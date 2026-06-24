@@ -67,7 +67,10 @@
       "Bash(git commit -m 'Remove orphaned shortcuts.js file causing import errors *)",
       "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s http://localhost:4000/api/client-pos 2>&1 | head -20')",
       "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s \"http://localhost:4000/api/clients?page=1&limit=100&search=\" 2>&1 | head -5')",
-      "Bash(git commit -m 'Fix ClientFilter to handle paginated clients endpoint *)"
+      "Bash(git commit -m 'Fix ClientFilter to handle paginated clients endpoint *)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s http://localhost:4000/api/client-pos 2>&1 | jq .[0] 2>/dev/null | head -20')",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s http://localhost:4000/api/client-pos 2>&1 | head -30')",
+      "Bash(git commit -m 'Fix all forms to use paginated clients endpoint *)"
     ]
   }
 }

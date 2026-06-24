@@ -10,7 +10,8 @@ import { fmtCur, currencySymbol } from '../currency.js';
 export default function ReceiptForm() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
-  const { data: clients } = useFetch('/clients?active=1');
+  const { data } = useFetch('/clients?page=1&limit=1000&search=');
+  const clients = data?.clients || [];
   const { data: facilities } = useFetch('/facilities');
   // Bank accounts money can be received into = Treasury OD / Current facilities.
   const banks = (facilities || []).filter((f) => (f.type === 'OD' || f.type === 'Current') && f.active !== 0);
