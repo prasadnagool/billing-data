@@ -8,14 +8,22 @@ import { canEdit } from '../auth.js';
 
 const FIELDS = ['name', 'country', 'gstin', 'pan', 'state_code', 'state_name', 'currency', 'payment_terms', 'address_line1', 'address_line2', 'city', 'pincode', 'email', 'phone', 'notes', 'contacts'];
 const isDomestic = (c) => (c.country || 'India') === 'India';
+const PAGE_SIZE = 10;
 
 export default function Clients() {
   const nav = useNavigate();
   const fileRef = useRef(null);
   const [scope, setScope] = useState('all'); // all | domestic | international
-  const { data, loading, reload } = useFetch('/clients');
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const { data, loading, reload } = useFetch(`/clients?page=${page}&limit=${PAGE_SIZE}&search=${encodeURIComponent(search)}`);
 
-  const rows = (data || []).filter((c) =>
+  const clients = data?.clients || [];
+  const total = data?.total || 0;
+  const hasMore = data?.hasMore || false;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  const rows = clients.filter((c) =>
     scope === 'all' ? true : scope === 'domestic' ? isDomestic(c) : !isDomestic(c));
 
   const doExport = () => exportCsv('clients.csv', FIELDS.map((f) => ({ label: f, value: (r) => r[f] ?? '' })), rows);
@@ -59,6 +67,14 @@ export default function Clients() {
         </>}
       />
       <div className="flex items-center gap-4 mb-3">
+        <input
+          type="text"
+          className="input"
+          placeholder="Search clients by name..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          style={{ maxWidth: 250 }}
+        />
         <div className="flex gap-3 text-xs">
           {[['all', 'All'], ['domestic', 'Domestic'], ['international', 'International']].map(([v, l]) => (
             <label key={v} className="flex items-center gap-1.5 cursor-pointer">
@@ -67,7 +83,7 @@ export default function Clients() {
             </label>
           ))}
         </div>
-        <span className="text-[11px] text-muted">{rows.length} client{rows.length === 1 ? '' : 's'}</span>
+        <span className="text-[11px] text-muted">{total} total</span>
       </div>
       <p className="text-[11px] text-muted mb-3">Tip: export first to get the column template, fill in new rows, then import. Only <b>name</b> is required.</p>
       <DataTable
@@ -93,6 +109,29 @@ export default function Clients() {
           ) },
         ]}
       />
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4 pt-3 border-t border-line">
+          <span className="text-xs text-muted">
+            Page {page} of {totalPages} · Showing {rows.length} of {total} client{total === 1 ? '' : 's'}
+          </span>
+          <div className="flex gap-2">
+            <button
+              className="btn btn-sm"
+              disabled={page === 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+            >
+              ← Prev
+            </button>
+            <button
+              className="btn btn-sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

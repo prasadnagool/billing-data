@@ -29,12 +29,24 @@ const upload = multer({
 
 // ============================= CLIENTS =======================================
 r.get('/clients', (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page || '1', 10));
+  const limit = Math.max(1, Math.min(100, parseInt(req.query.limit || '10', 10)));
+  const offset = (page - 1) * limit;
+  const search = String(req.query.search || '').toLowerCase().trim();
+
+  // Fetch all clients for filtering (respects permissions)
   let rows = db.prepare('SELECT * FROM clients ORDER BY name').all();
   // ?active=1 → only enabled clients (selection dropdowns for new docs).
   if (req.query.active === '1') rows = rows.filter((c) => c.active !== 0);
   // Disabled clients are visible only to the super admin.
   if (!req.user?.isSuperAdmin) rows = rows.filter((c) => c.active !== 0);
-  const out = rows.map((c) => {
+  // Search filter
+  if (search) rows = rows.filter((c) => c.name.toLowerCase().includes(search));
+
+  const total = rows.length;
+  const pageRows = rows.slice(offset, offset + limit);
+
+  const out = pageRows.map((c) => {
     const totalPos = db.prepare(`SELECT COUNT(*) n FROM client_pos WHERE client_id=?`).get(c.id).n;
     const openPos = db.prepare(`SELECT COUNT(*) n FROM client_pos WHERE client_id=? AND status IN ('Open','Partial')`).get(c.id).n;
     const invs = db.prepare(`SELECT id, totals_total FROM client_invoices WHERE client_id=? AND status != 'Cancelled'`).all(c.id);
@@ -42,7 +54,7 @@ r.get('/clients', (req, res) => {
     for (const i of invs) { const { balance } = invoiceRollup(i.id, i.totals_total); if (balance > 0) { outstanding += balance; openInvoices++; } }
     return { ...c, total_pos: totalPos, open_pos: openPos, open_invoices: openInvoices, outstanding };
   });
-  res.json(out);
+  res.json({ clients: out, total, page, limit, hasMore: offset + limit < total });
 });
 
 // Enable / disable a client (disabled clients drop out of selection lists).

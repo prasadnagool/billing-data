@@ -54,7 +54,13 @@
       "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'cd /opt/billingdata && unzip -o /opt/kgreen-po-tracker.zip >/dev/null && pm2 restart po-tracker --update-env >/dev/null && sleep 2 && echo \"✓ Restarted\"')",
       "Bash(git commit -m 'Fix: define requireAuth middleware in shortcuts route *)",
       "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'cd /opt/billingdata && unzip -o /opt/kgreen-po-tracker.zip >/dev/null && pm2 restart po-tracker --update-env >/dev/null && sleep 2 && echo \"✓ Deployed\"')",
-      "Bash(git commit -m 'Remove keyboard shortcuts functionality *)"
+      "Bash(git commit -m 'Remove keyboard shortcuts functionality *)",
+      "Bash(curl -s -X GET https://kgreenact.in/api/prefs/dashboard)",
+      "Bash(git commit -m 'Add error logging to prefs endpoints for debugging *)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'pm2 logs po-tracker --lines 30 2>&1 | grep -i \"prefs\\\\|error\\\\|save\" | tail -20')",
+      "Bash(git commit -m 'Fix: only close dashboard customize modal on successful save *)",
+      "Bash(git commit -m 'Move Save Layout and Reset buttons to header next to Customize *)",
+      "Bash(git commit -m 'Add pagination and search to Clients page for faster loading *)"
     ]
   }
 }
