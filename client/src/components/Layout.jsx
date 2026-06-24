@@ -27,6 +27,7 @@ const PATHS = {
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/>',
   shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>',
   database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
+  keyboard: '<rect x="2" y="4" width="20" height="14" rx="2" stroke="currentColor" fill="none"/><rect x="5" y="7" width="2" height="2" rx="0.5"/><rect x="9" y="7" width="2" height="2" rx="0.5"/><rect x="13" y="7" width="2" height="2" rx="0.5"/><rect x="17" y="7" width="2" height="2" rx="0.5"/><rect x="5" y="11" width="2" height="2" rx="0.5"/><rect x="9" y="11" width="2" height="2" rx="0.5"/><rect x="13" y="11" width="2" height="2" rx="0.5"/><rect x="17" y="11" width="2" height="2" rx="0.5"/>',
 };
 function Icon({ name, size = 18 }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: PATHS[name] || PATHS.grid }} />;
@@ -90,6 +91,7 @@ const NAV = [
       { to: '/admin/users', label: 'Users', key: 'admin', icon: 'users' },
       { to: '/admin/roles', label: 'Roles & privileges', key: 'admin', icon: 'shield' },
       { to: '/admin/financial-year', label: 'Financial Year', key: 'admin', icon: 'clock' },
+      { to: '/admin/keyboard-shortcuts', label: 'Keyboard Shortcuts', key: 'admin', icon: 'keyboard' },
       { to: '/admin/backups', label: 'Backups', key: 'admin', icon: 'database' },
     ],
   },
@@ -208,6 +210,7 @@ const CRUMBS = {
   '/admin/users': 'Administration › Users',
   '/admin/roles': 'Administration › Roles & privileges',
   '/admin/financial-year': 'Administration › Financial Year',
+  '/admin/keyboard-shortcuts': 'Administration › Keyboard Shortcuts',
   '/admin/backups': 'Administration › Backups',
 };
 

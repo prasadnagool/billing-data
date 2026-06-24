@@ -13,6 +13,7 @@ import expenses from './routes/expenses.js';
 import pnl from './routes/pnl.js';
 import admin from './routes/admin.js';
 import treasury from './routes/treasury.js';
+import shortcuts from './routes/shortcuts.js';
 import prefs from './routes/prefs.js';
 import { authRouter, attachUser, privLevel } from './auth.js';
 
@@ -75,6 +76,7 @@ export function createApp() {
   app.use('/api', pnl);
   app.use('/api', admin);
   app.use('/api', treasury);
+  app.use('/api', shortcuts);
   app.use('/api', prefs);
 
   // Serve built client in production, if present.
