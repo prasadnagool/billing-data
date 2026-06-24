@@ -41,7 +41,7 @@ const NAV = [
       { to: '/clients', label: 'Clients', key: 'clients', icon: 'users' },
       { to: '/client-pos', label: 'Client POs', key: 'client_pos', icon: 'fileText' },
       { to: '/client-invoices', label: 'Client Invoices', key: 'client_invoices', icon: 'file' },
-      { to: '/client-payments', label: 'Client Payments', key: 'client_payments', icon: 'card' },
+      { to: '/client-payments', label: 'Client Receipts', key: 'client_payments', icon: 'card' },
       { to: '/credit-notes', label: 'Credit Notes', key: 'credit_notes', icon: 'receipt' },
       { to: '/expenses', label: 'Expenses', key: 'expenses', icon: 'wallet' },
     ],
