@@ -61,7 +61,10 @@
       "Bash(git commit -m 'Fix: only close dashboard customize modal on successful save *)",
       "Bash(git commit -m 'Move Save Layout and Reset buttons to header next to Customize *)",
       "Bash(git commit -m 'Add pagination and search to Clients page for faster loading *)",
-      "Bash(git commit -m 'Revert Clients layout to DataTable component *)"
+      "Bash(git commit -m 'Revert Clients layout to DataTable component *)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'cd /opt/billingdata && pm2 status')",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'cd /opt/billingdata && pm2 logs po-tracker --lines 30 --nostream')",
+      "Bash(git commit -m 'Remove orphaned shortcuts.js file causing import errors *)"
     ]
   }
 }
