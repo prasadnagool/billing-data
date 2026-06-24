@@ -117,11 +117,18 @@ const railCls = ({ isActive }) =>
     : 'border-transparent text-white/85 hover:bg-white/10'}`;
 
 function Sidebar({ rail }) {
+  const loc = useLocation();
   const [collapsed, setCollapsed] = useState({});
   const toggle = (s) => setCollapsed((c) => ({ ...c, [s]: !c[s] }));
   const groups = NAV.filter((grp) => (!grp.superAdminOnly || isSuperAdmin()))
     .map((grp) => ({ ...grp, items: grp.items.filter((it) => it.key === 'admin' || canView(it.key)) }))
     .filter((grp) => grp.items.length > 0);
+
+  // Find which section contains the current route; auto-expand it
+  const activeSection = groups.find((grp) => grp.items.some((it) => {
+    if (it.end) return loc.pathname === it.to;
+    return loc.pathname.startsWith(it.to);
+  }))?.section;
 
   return (
     <aside style={{ backgroundColor: 'var(--c-sidebar)' }} className={`${rail ? 'w-[60px]' : 'w-[230px]'} text-white/90 py-4 flex-shrink-0 overflow-y-auto overflow-x-hidden transition-[width] duration-200`}>
@@ -144,7 +151,8 @@ function Sidebar({ rail }) {
         </nav>
       ) : (
         groups.map((grp) => {
-          const isCol = !!collapsed[grp.section];
+          // Section is collapsed only if explicitly marked collapsed AND it's not the active section
+          const isCol = !!collapsed[grp.section] && grp.section !== activeSection;
           return (
             <div key={grp.section}>
               <button type="button" onClick={() => toggle(grp.section)}

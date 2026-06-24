@@ -41,7 +41,11 @@
       "Bash(scp /Users/macbookpro/Documents/billingdata/server/src/routes/receivables.js root@27.100.38.230:/opt/billingdata/server/src/routes/)",
       "Bash(curl -s -X OPTIONS https://kgreenact.in/api/client-invoices/test -I)",
       "Bash(cat)",
-      "Bash(bash /tmp/check_deployment.sh)"
+      "Bash(bash /tmp/check_deployment.sh)",
+      "Bash(zip -rq ~/Downloads/kgreen-po-tracker.zip server client/dist client/package.json package.json -x */node_modules/* */data/*.db */data/*.db-* */data/backups/*)",
+      "Bash(scp -o BatchMode=yes -o ConnectTimeout=25 ~/Downloads/kgreen-po-tracker.zip root@27.100.38.230:/opt/)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'cd /opt/billingdata && unzip -o /opt/kgreen-po-tracker.zip >/dev/null && pm2 restart po-tracker --update-env >/dev/null && echo \"✓ restarted\"')",
+      "Bash(git commit -m 'Sidebar: auto-expand section containing current page for easier navigation *)"
     ]
   }
 }
