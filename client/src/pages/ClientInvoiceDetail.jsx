@@ -4,7 +4,7 @@ import { api } from '../api.js';
 import { Card, MetaStrip, DataTable, Amt, StatusPill } from '../components/ui.jsx';
 import { fmtDate  } from '../format.js';
 import { fmtCur } from '../currency.js';
-import { isManager } from '../auth.js';
+import { isManager, isSuperAdmin } from '../auth.js';
 
 export default function ClientInvoiceDetail() {
   const { id } = useParams();
@@ -17,6 +17,12 @@ export default function ClientInvoiceDetail() {
   const cancel = async () => {
     if (!confirm('Cancel this invoice? Only allowed if no payment applied.')) return;
     try { await api.post(`/client-invoices/${id}/cancel`); reload(); }
+    catch (e) { alert(e.message); }
+  };
+
+  const deleteInvoice = async () => {
+    if (!confirm('Delete this invoice permanently? This cannot be undone. Only allowed if no payment applied.')) return;
+    try { await api.delete(`/client-invoices/${id}`); alert('Invoice deleted.'); nav('/client-invoices'); }
     catch (e) { alert(e.message); }
   };
 
@@ -38,6 +44,9 @@ export default function ClientInvoiceDetail() {
           {isManager()
             ? <button className="btn" onClick={cancel}>Cancel invoice</button>
             : <button className="btn opacity-50 cursor-not-allowed" title="Manager login required" disabled>Cancel invoice 🔒</button>}
+          {isSuperAdmin() && (
+            <button className="btn btn-danger" onClick={deleteInvoice}>Delete invoice</button>
+          )}
           {!inv.irn && inv.status !== 'Draft' && inv.status !== 'Cancelled' && (
             <button className="btn" onClick={genEinvoice}>Generate e-invoice</button>
           )}

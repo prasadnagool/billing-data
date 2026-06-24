@@ -10,7 +10,16 @@
       "Bash(python3 -c ' *)",
       "Read(//tmp/**)",
       "Bash(mkdir -p /Users/macbookpro/Documents/stockscreener && echo created)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npm run *)",
+      "Bash(bash /Users/macbookpro/Documents/billingdata/deploy/deploy.sh)",
+      "Read(//Users/macbookpro/Documents/**)",
+      "Bash(rm -f ~/Downloads/kgreen-po-tracker.zip)",
+      "Bash(zip -r ~/Downloads/kgreen-po-tracker.zip billingdata/server billingdata/client/dist billingdata/package.json billingdata/package-lock.json billingdata/README.md billingdata/.gitignore -x \"billingdata/server/node_modules/*\" \"billingdata/server/data/*\" \"billingdata/.git/*\" \"billingdata/.claude/*\")",
+      "Bash(scp ~/Downloads/kgreen-po-tracker.zip root@27.100.38.230:/opt/)",
+      "Bash(ssh root@27.100.38.230 \"cd /opt/billingdata && unzip -o /opt/kgreen-po-tracker.zip && pm2 restart po-tracker && pm2 logs po-tracker --lines 10\")",
+      "Bash(ssh root@27.100.38.230 \"pm2 status\")",
+      "Bash(curl -s https://kgreenact.in/api/settings/invoice-fy)"
     ]
   }
 }

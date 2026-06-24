@@ -9,7 +9,7 @@ import {
 } from '../lib/repo.js';
 // Hide records of disabled clients from everyone except the super admin.
 const visibleClient = (req) => { if (req.user?.isSuperAdmin) return () => true; const dis = new Set(disabledClientIds()); return (row) => !dis.has(row.client_id); };
-import { requireManager } from '../auth.js';
+import { requireManager, requireSuperAdmin } from '../auth.js';
 import { buildInv01, generateIrn } from '../lib/einvoice.js';
 
 const r = Router();
@@ -316,6 +316,28 @@ r.post('/client-invoices/:id/cancel', requireManager, (req, res) => {
   const { applied } = invoiceRollup(inv.id, inv.totals_total);
   if (applied > 0) return res.status(409).json({ error: 'Cannot cancel: payment applied. Issue a credit note instead.' });
   db.prepare('UPDATE client_invoices SET status=?, updated_at=? WHERE id=?').run('Cancelled', now(), inv.id);
+  res.json({ ok: true });
+});
+
+// Delete an invoice (super-admin only). Not allowed if receipts have been applied.
+r.delete('/client-invoices/:id', requireSuperAdmin, (req, res) => {
+  const inv = db.prepare('SELECT * FROM client_invoices WHERE id=?').get(req.params.id);
+  if (!inv) return res.status(404).json({ error: 'Not found' });
+  const { applied } = invoiceRollup(inv.id, inv.totals_total);
+  if (applied > 0) return res.status(409).json({ error: 'Cannot delete: payment applied. Reverse the receipt or issue a credit note instead.' });
+  const ts = now();
+  db.prepare('DELETE FROM client_invoice_lines WHERE client_invoice_id=?').run(inv.id);
+  db.prepare('DELETE FROM client_invoices WHERE id=?').run(inv.id);
+  // Recompute PO status
+  const po = db.prepare('SELECT * FROM client_pos WHERE id=?').get(inv.client_po_id);
+  if (po) {
+    const { invoiced } = clientPoRollup(po.id);
+    let newStatus = 'Open';
+    if (invoiced >= po.totals_total) newStatus = 'Fully invoiced';
+    else if (invoiced > 0) newStatus = 'Partial';
+    db.prepare('UPDATE client_pos SET status=?, updated_at=? WHERE id=?').run(newStatus, ts, po.id);
+  }
+  logActivity({ kind: 'invoice_deleted', entity: 'client_invoices', entity_id: inv.id, ref: inv.invoice_no, party: clientName(inv.client_id), amount: inv.totals_total, description: `Invoice deleted` });
   res.json({ ok: true });
 });
 
