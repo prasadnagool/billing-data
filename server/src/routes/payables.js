@@ -441,6 +441,16 @@ r.post('/payments', (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM vendor_payments WHERE id=?').get(id));
 });
 
+// Delete a vendor payment (also removes payment allocations)
+r.delete('/vendor-payments/:id', (req, res) => {
+  const pmt = db.prepare('SELECT * FROM vendor_payments WHERE id=?').get(req.params.id);
+  if (!pmt) return res.status(404).json({ error: 'Not found' });
+  db.prepare('DELETE FROM payment_allocations WHERE payment_id=?').run(pmt.id);
+  db.prepare('DELETE FROM vendor_payments WHERE id=?').run(pmt.id);
+  logActivity({ kind: 'payment_deleted', entity: 'vendor_payments', entity_id: pmt.id, ref: pmt.payment_no, party: vendorName(pmt.vendor_id), amount: pmt.gross, description: 'Payment deleted' });
+  res.json({ ok: true });
+});
+
 // ============================= VENDOR ADVANCES ===============================
 r.get('/vendor-advances', (req, res) => {
   res.json(db.prepare('SELECT * FROM vendor_advances ORDER BY date DESC').all().map(enrichAdvance).filter(visibleVendor(req)));
