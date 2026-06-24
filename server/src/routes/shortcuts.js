@@ -1,8 +1,13 @@
 import { Router } from 'express';
 import { db, uuid, now } from '../db.js';
-import { requireAuth } from '../auth.js';
 
 const r = Router();
+
+// Middleware to require authenticated user
+const requireAuth = (req, res, next) => {
+  if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+  next();
+};
 
 // Default shortcuts for all users
 const DEFAULT_SHORTCUTS = [
