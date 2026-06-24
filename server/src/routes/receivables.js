@@ -353,6 +353,16 @@ r.delete('/client-invoices/:id', requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// Update client invoice status
+r.patch('/client-invoices/:id', (req, res) => {
+  const inv = db.prepare('SELECT * FROM client_invoices WHERE id=?').get(req.params.id);
+  if (!inv) return res.status(404).json({ error: 'Not found' });
+  const status = req.body.status;
+  if (!status) return res.status(400).json({ error: 'Status required' });
+  db.prepare('UPDATE client_invoices SET status=?, updated_at=? WHERE id=?').run(status, now(), inv.id);
+  res.json({ ok: true });
+});
+
 // ---- E-invoice (IRN) -------------------------------------------------------
 // Preview the INV-01 payload that would be sent to the IRP (no API call).
 r.get('/client-invoices/:id/einvoice/preview', (req, res) => {

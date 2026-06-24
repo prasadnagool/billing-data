@@ -77,7 +77,9 @@
       "Bash(curl -s -X DELETE http://localhost:4000/api/vendor-invoices/b25ccb3c-754d-4561-934d-63e187723b92)",
       "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s -X DELETE http://localhost:4000/api/vendor-invoices/032f6cc6-9fb3-4126-aecd-13bc2c12f7d8 && echo && curl -s -X DELETE http://localhost:4000/api/vendor-invoices/b25ccb3c-754d-4561-934d-63e187723b92')",
       "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s -X DELETE http://localhost:4000/api/vendor-invoices/032f6cc6-9fb3-4126-aecd-13bc2c12f7d8 && echo \"Deleted\"')",
-      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s http://localhost:4000/api/vendor-payments 2>&1')"
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s http://localhost:4000/api/vendor-payments 2>&1')",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s http://localhost:4000/api/client-invoices 2>&1')",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s -X PATCH http://localhost:4000/api/client-invoices/51098fae-387e-4a84-af95-e57bbb70e70d -H \"Content-Type: application/json\" -d \"{\\\\\"status\\\\\":\\\\\"Open\\\\\"}\"')"
     ]
   }
 }
