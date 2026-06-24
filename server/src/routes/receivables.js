@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, uuid, now, nextNumber, logActivity, UPLOAD_DIR } from '../db.js';
+import { db, uuid, now, nextNumber, fyLabel, logActivity, UPLOAD_DIR } from '../db.js';
 import { computeLine, sumLines } from '../lib/compute.js';
 import {
   enrichClientPo, enrichClientInvoice, clientPoRollup, invoiceRollup, clientName, disabledClientIds,
@@ -260,7 +260,8 @@ r.post('/client-invoices', (req, res) => {
   const custNo = b.invoice_no != null ? String(b.invoice_no).trim() : '';
   let invoice_no = null;
   if (issue) {
-    invoice_no = custNo || nextNumber('client_invoice', 'INV-CL');
+    const fy = fyLabel(b.invoice_date);
+    invoice_no = custNo || nextNumber('client_invoice', 'INV', { fy, pad: 3, format: (num) => `INV/KG/${fy}/${num}` });
     if (custNo) {
       const dup = db.prepare('SELECT 1 FROM client_invoices WHERE invoice_no=?').get(custNo);
       if (dup) return res.status(409).json({ error: `Invoice number "${custNo}" already exists.` });

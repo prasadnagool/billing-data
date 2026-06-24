@@ -138,7 +138,7 @@ export const uuid = () => randomUUID();
 export const now = () => new Date().toISOString();
 
 // Allocate the next number in a series (e.g. PO-CL, INV-CL, RCT) for an FY.
-export function nextNumber(series, prefix, { fy = 'ALL', pad = 4, withFy = false } = {}) {
+export function nextNumber(series, prefix, { fy = 'ALL', pad = 4, withFy = false, format } = {}) {
   const row = db.prepare('SELECT next_no FROM counters WHERE series = ? AND fy = ?').get(series, fy);
   const n = row ? row.next_no : 1;
   if (row) {
@@ -147,7 +147,16 @@ export function nextNumber(series, prefix, { fy = 'ALL', pad = 4, withFy = false
     db.prepare('INSERT INTO counters (series, fy, next_no) VALUES (?, ?, ?)').run(series, fy, n + 1);
   }
   const num = String(n).padStart(pad, '0');
+  if (format) return format(num, fy);
   return withFy ? `${prefix}-${fyShort(fy)}-${num}` : `${prefix}-${num}`;
+}
+
+// Indian financial year label (Apr–Mar) like "26-27" for a date (default today).
+export function fyLabel(dateStr) {
+  const d = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
+  const y = d.getFullYear();
+  const start = d.getMonth() >= 3 ? y : y - 1; // FY begins April (month index 3)
+  return `${String(start).slice(2)}-${String(start + 1).slice(2)}`;
 }
 
 function fyShort(fy) {
