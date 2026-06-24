@@ -13,7 +13,7 @@ export default function ClientPoForm() {
   const nav = useNavigate();
   const { data: clients, reload: reloadClients } = useFetch('/clients?active=1');
   const { data: products } = useFetch('/products');
-  const [form, setForm] = useState({ client_id: '', client_po_ref: '', po_date: today(), expected_delivery: '', payment_terms: 'Net 30', gst_treatment: 'IGST', place_of_supply: '', notes: '' });
+  const [form, setForm] = useState({ client_id: '', our_po_no: '', client_po_ref: '', po_date: today(), expected_delivery: '', payment_terms: 'Net 30', gst_treatment: 'IGST', place_of_supply: '', notes: '' });
   const [lines, setLines] = useState([{ description: '', hsn_sac: '', qty: 1, rate: 0, gst_pct: 18 }]);
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -63,7 +63,11 @@ export default function ClientPoForm() {
               <button type="button" className="btn whitespace-nowrap" onClick={() => setShowNew((v) => !v)}>{showNew ? 'Close' : '+ New'}</button>
             </div>
           </Field>
-          <Field label="Client's PO ref"><Input value={form.client_po_ref} onChange={set('client_po_ref')} /></Field>
+          <Field label="PO number (as received from client)"><Input value={form.our_po_no} onChange={set('our_po_no')} placeholder="Any format — blank → auto PO-CL-####" /></Field>
+        </FormRow>
+        <FormRow>
+          <Field label="Client's PO ref (optional)"><Input value={form.client_po_ref} onChange={set('client_po_ref')} /></Field>
+          <div />
         </FormRow>
 
         {showNew && (

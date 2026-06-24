@@ -166,10 +166,22 @@ r.post('/client-pos', (req, res) => {
   const lines = (b.lines || []).map((l, i) => ({ ...computeLine(l), id: uuid(), client_po_id: id, note: l.note ?? null, sort_order: i }));
   const t = sumLines(lines);
   const issue = b.action === 'issue';
-  const our_po_no = issue ? nextNumber('client_po', 'PO-CL') : null;
-  db.prepare(`INSERT INTO client_pos (id,our_po_no,client_po_ref,client_id,po_date,expected_delivery,payment_terms,currency,gst_treatment,place_of_supply,notes,status,totals_taxable,totals_gst,totals_total,created_at,updated_at)
-    VALUES (@id,@our_po_no,@client_po_ref,@client_id,@po_date,@expected_delivery,@payment_terms,@currency,@gst_treatment,@place_of_supply,@notes,@status,@tt,@tg,@to,@ts,@ts)`)
-    .run({ id, our_po_no, client_po_ref: b.client_po_ref || null, client_id: b.client_id, po_date: b.po_date, expected_delivery: b.expected_delivery || null, payment_terms: b.payment_terms || null, currency, gst_treatment: b.gst_treatment || 'IGST', place_of_supply: b.place_of_supply || null, notes: b.notes || null, status: issue ? 'Open' : 'Draft', tt: t.taxable, tg: t.gst, to: t.total, ts });
+  // PO number is the client's PO number as entered by the user (any format);
+  // blank → auto PO-CL-####. Must be unique.
+  let our_po_no = null;
+  if (issue) {
+    const cust = b.our_po_no != null ? String(b.our_po_no).trim() : '';
+    our_po_no = cust || nextNumber('client_po', 'PO-CL');
+    if (cust && db.prepare('SELECT 1 FROM client_pos WHERE our_po_no=?').get(cust)) return res.status(409).json({ error: `PO number "${cust}" already exists.` });
+  }
+  try {
+    db.prepare(`INSERT INTO client_pos (id,our_po_no,client_po_ref,client_id,po_date,expected_delivery,payment_terms,currency,gst_treatment,place_of_supply,notes,status,totals_taxable,totals_gst,totals_total,created_at,updated_at)
+      VALUES (@id,@our_po_no,@client_po_ref,@client_id,@po_date,@expected_delivery,@payment_terms,@currency,@gst_treatment,@place_of_supply,@notes,@status,@tt,@tg,@to,@ts,@ts)`)
+      .run({ id, our_po_no, client_po_ref: b.client_po_ref || null, client_id: b.client_id, po_date: b.po_date, expected_delivery: b.expected_delivery || null, payment_terms: b.payment_terms || null, currency, gst_treatment: b.gst_treatment || 'IGST', place_of_supply: b.place_of_supply || null, notes: b.notes || null, status: issue ? 'Open' : 'Draft', tt: t.taxable, tg: t.gst, to: t.total, ts });
+  } catch (e) {
+    if (/UNIQUE/.test(e.message)) return res.status(409).json({ error: `PO number "${our_po_no}" already exists.` });
+    throw e;
+  }
   const ins = db.prepare(`INSERT INTO client_po_lines (id,client_po_id,description,hsn_sac,qty,rate,gst_pct,taxable,gst,total,note,sort_order) VALUES (@id,@client_po_id,@description,@hsn_sac,@qty,@rate,@gst_pct,@taxable,@gst,@total,@note,@sort_order)`);
   lines.forEach((l) => ins.run(l));
   if (issue) logActivity({ kind: 'po_received', entity: 'client_pos', entity_id: id, ref: our_po_no, party: clientName(b.client_id), amount: t.total, description: 'Client PO received' });
@@ -186,8 +198,18 @@ r.patch('/client-pos/:id', (req, res) => {
   if (received > 0) return res.status(409).json({ error: 'Cannot edit: a payment has already been received against this PO.' });
   const invoiced = db.prepare(`SELECT COUNT(*) n FROM client_invoices WHERE client_po_id=? AND status != 'Cancelled'`).get(po.id).n;
 
+  // PO number may be edited (must stay unique). Only applies once issued.
+  let our_po_no = po.our_po_no;
+  if (b.our_po_no != null && po.our_po_no) {
+    const cust = String(b.our_po_no).trim();
+    if (cust && cust !== po.our_po_no) {
+      if (db.prepare('SELECT 1 FROM client_pos WHERE our_po_no=? AND id<>?').get(cust, po.id)) return res.status(409).json({ error: `PO number "${cust}" already exists.` });
+      our_po_no = cust;
+    }
+  }
   // header fields
   const m = {
+    our_po_no,
     client_po_ref: b.client_po_ref ?? po.client_po_ref,
     po_date: b.po_date ?? po.po_date,
     expected_delivery: b.expected_delivery ?? po.expected_delivery,
@@ -206,7 +228,7 @@ r.patch('/client-pos/:id', (req, res) => {
     }
     const lines = db.prepare('SELECT * FROM client_po_lines WHERE client_po_id=?').all(po.id);
     const t = sumLines(lines);
-    db.prepare(`UPDATE client_pos SET client_po_ref=@client_po_ref,po_date=@po_date,expected_delivery=@expected_delivery,payment_terms=@payment_terms,currency=@currency,gst_treatment=@gst_treatment,place_of_supply=@place_of_supply,notes=@notes,totals_taxable=@tt,totals_gst=@tg,totals_total=@to,updated_at=@ts WHERE id=@id`)
+    db.prepare(`UPDATE client_pos SET our_po_no=@our_po_no,client_po_ref=@client_po_ref,po_date=@po_date,expected_delivery=@expected_delivery,payment_terms=@payment_terms,currency=@currency,gst_treatment=@gst_treatment,place_of_supply=@place_of_supply,notes=@notes,totals_taxable=@tt,totals_gst=@tg,totals_total=@to,updated_at=@ts WHERE id=@id`)
       .run({ id: po.id, ...m, tt: t.taxable, tg: t.gst, to: t.total, ts });
   });
   tx();

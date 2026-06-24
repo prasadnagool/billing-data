@@ -17,7 +17,7 @@ export default function ClientPoEdit() {
   useEffect(() => {
     api.get(`/client-pos/${id}`).then((p) => {
       setPo(p);
-      setForm({ client_po_ref: p.client_po_ref || '', po_date: p.po_date || '', expected_delivery: p.expected_delivery || '', payment_terms: p.payment_terms || '', gst_treatment: p.gst_treatment || 'IGST', place_of_supply: p.place_of_supply || '', currency: p.currency || 'INR', notes: p.notes || '' });
+      setForm({ our_po_no: p.our_po_no || '', client_po_ref: p.client_po_ref || '', po_date: p.po_date || '', expected_delivery: p.expected_delivery || '', payment_terms: p.payment_terms || '', gst_treatment: p.gst_treatment || 'IGST', place_of_supply: p.place_of_supply || '', currency: p.currency || 'INR', notes: p.notes || '' });
       setLines(p.lines.map((l) => ({ description: l.description, hsn_sac: l.hsn_sac, qty: l.qty, rate: l.rate, gst_pct: l.gst_pct, note: l.note || '' })));
     }).catch((e) => alert(e.message));
   }, [id]);
@@ -50,8 +50,9 @@ export default function ClientPoEdit() {
       <PageHeader title={`Edit ${po.our_po_no} · ${po.client_name}`} sub="PO is editable until a payment is received" />
       <Card title="PO details">
         <FormRow>
-          <Field label="Client's PO ref"><Input value={form.client_po_ref} onChange={set('client_po_ref')} /></Field>
+          <Field label="PO number"><Input value={form.our_po_no} onChange={set('our_po_no')} placeholder="Client's PO no." /></Field>
           <Field label="PO date"><Input type="date" value={form.po_date} onChange={set('po_date')} /></Field>
+          <Field label="Client's PO ref (optional)"><Input value={form.client_po_ref} onChange={set('client_po_ref')} /></Field>
         </FormRow>
         <FormRow cols={3}>
           <Field label="Expected delivery"><Input type="date" value={form.expected_delivery} onChange={set('expected_delivery')} /></Field>

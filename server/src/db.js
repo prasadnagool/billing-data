@@ -117,6 +117,7 @@ ensureColumns('expense_payees', [['default_description', 'TEXT']]);
 for (const [name, sql] of [
   ['ux_client_invoices_no', `CREATE UNIQUE INDEX IF NOT EXISTS ux_client_invoices_no ON client_invoices(invoice_no) WHERE invoice_no IS NOT NULL AND invoice_no <> ''`],
   ['ux_vendor_pos_no', `CREATE UNIQUE INDEX IF NOT EXISTS ux_vendor_pos_no ON vendor_pos(our_po_no) WHERE our_po_no IS NOT NULL AND our_po_no <> ''`],
+  ['ux_client_pos_no', `CREATE UNIQUE INDEX IF NOT EXISTS ux_client_pos_no ON client_pos(our_po_no) WHERE our_po_no IS NOT NULL AND our_po_no <> ''`],
 ]) {
   try { db.exec(sql); } catch (e) { console.warn(`[db] could not create ${name} (duplicates may exist): ${e.message}`); }
 }
