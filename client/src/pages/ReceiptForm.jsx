@@ -43,6 +43,8 @@ export default function ReceiptForm() {
   useEffect(() => {
     const invId = sp.get('invoice');
     if (invId && clients) api.get(`/client-invoices/${invId}`).then((inv) => setForm((f) => ({ ...f, client_id: inv.client_id, gross: inv.balance })));
+    const cid = sp.get('client');
+    if (cid) setForm((f) => (f.client_id ? f : { ...f, client_id: cid }));
   }, [clients]);
 
   const net = (form.gross || 0) - (form.tds || 0) - (form.charges || 0);

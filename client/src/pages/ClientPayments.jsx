@@ -10,7 +10,22 @@ export default function ClientPayments() {
   const nav = useNavigate();
   const [period, setPeriod] = useState('month');
   const { data, loading } = useFetch('/receipts');
+  const { data: clients } = useFetch('/clients?active=1');
   const rows = (data || []).filter((r) => inPeriod(r.date, period));
+
+  // Quick client search → jump straight to recording a receipt for that client.
+  const [q, setQ] = useState('');
+  const [idx, setIdx] = useState(-1);
+  const matches = q.trim().length < 1 ? [] : (clients || [])
+    .filter((c) => `${c.name} ${c.gstin || ''}`.toLowerCase().includes(q.trim().toLowerCase()))
+    .slice(0, 8);
+  const recordFor = (c) => nav(`/client-payments/new?client=${c.id}`);
+  const onSearchKey = (e) => {
+    if (!matches.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setIdx((i) => Math.min(i + 1, matches.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setIdx((i) => Math.max(i - 1, 0)); }
+    else if (e.key === 'Enter') { e.preventDefault(); recordFor(matches[idx >= 0 ? idx : 0]); }
+  };
 
   const exportRows = () => exportCsv(`client-receipts-${period}.csv`, [
     { label: 'Date', value: (r) => r.date },
@@ -34,6 +49,28 @@ export default function ClientPayments() {
           {canEdit('client_payments') && <button className="btn btn-primary" onClick={() => nav('/client-payments/new')}>+ Record receipt</button>}
         </>}
       />
+      {canEdit('client_payments') && (
+        <div className="card p-3 mb-3">
+          <div className="text-xs font-semibold mb-1.5">Quick record — search a client, then record their payment</div>
+          <div className="relative" style={{ maxWidth: 460 }}>
+            <input className="field" placeholder="Type client name…" value={q}
+              onChange={(e) => { setQ(e.target.value); setIdx(-1); }} onKeyDown={onSearchKey} />
+            {matches.length > 0 && (
+              <div className="absolute z-30 left-0 right-0 mt-1 bg-panel border border-line rounded-md overflow-hidden" style={{ boxShadow: '0 8px 24px rgba(0,0,0,.14)' }}>
+                {matches.map((c, i) => (
+                  <button key={c.id} type="button" onMouseEnter={() => setIdx(i)} onClick={() => recordFor(c)}
+                    className="w-full text-left px-3 py-2 text-sm flex items-center justify-between"
+                    style={i === idx ? { background: 'var(--c-primary-soft)', outline: '2px solid #0B6623' } : undefined}>
+                    <span>{c.name}{c.gstin ? <span className="text-muted text-[11px] ml-2">{c.gstin}</span> : null}</span>
+                    <span className="text-[11px] text-primary font-semibold">Record →</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="text-[11px] text-muted mt-1.5">↓ ↑ to highlight · Enter to record · or click a result</div>
+        </div>
+      )}
       <div className="flex gap-2 mb-3 items-center">
         <select className="field w-auto" value={period} onChange={(e) => setPeriod(e.target.value)}>
           {PERIODS_FY.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
