@@ -1,18 +1,42 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFetch } from '../hooks.js';
+import { api } from '../api.js';
 import { Card, MetaStrip, Tabs, DataTable, Amt, StatusPill } from '../components/ui.jsx';
 import { fmtDate } from '../format.js';
 import { fmtCur } from '../currency.js';
+import { isSuperAdmin } from '../auth.js';
 
 export default function VendorPoDetail() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { data: po, loading } = useFetch(`/vendor-pos/${id}`);
+  const { data: po, loading, reload } = useFetch(`/vendor-pos/${id}`);
   const [tab, setTab] = useState('lines');
   if (loading || !po) return <p className="text-muted">Loading…</p>;
   const cur = po.currency || 'INR';
   const c = (v) => fmtCur(v, cur);
+
+  const cancel = async () => {
+    if (!confirm('Cancel this vendor PO? This is only possible if no vendor invoice has been raised.')) return;
+    try {
+      await api.post(`/vendor-pos/${id}/cancel`);
+      alert('Vendor PO cancelled.');
+      reload();
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  const deletePo = async () => {
+    if (!confirm('Delete this vendor PO permanently? This cannot be undone. Only super-admin can delete.')) return;
+    try {
+      await api.delete(`/vendor-pos/${id}`);
+      alert('Vendor PO deleted.');
+      nav('/vendor-pos');
+    } catch (e) {
+      alert(e.message);
+    }
+  };
 
   return (
     <div>
@@ -23,6 +47,12 @@ export default function VendorPoDetail() {
         </div>
         <div className="flex gap-2">
           {po.paid === 0 && <button className="btn" onClick={() => nav(`/vendor-pos/${po.id}/edit`)}>Edit</button>}
+          {po.invoices.length === 0 && (
+            <button className="btn" onClick={cancel}>Cancel PO</button>
+          )}
+          {isSuperAdmin() && po.invoices.length === 0 && (
+            <button className="btn btn-danger" onClick={deletePo}>Delete PO</button>
+          )}
           <button className="btn" onClick={() => window.open(`/vendor-pos/${po.id}/print`, '_blank')}>Print / PDF</button>
           <button className="btn btn-primary" onClick={() => nav(`/vendor-invoices/new?po=${po.id}`)}>+ Record vendor invoice</button>
         </div>

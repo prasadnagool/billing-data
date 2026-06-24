@@ -36,7 +36,12 @@
       "Bash(curl -s https://kgreenact.in/client-invoices)",
       "Bash(curl -s https://kgreenact.in/api/receipts)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(zip -r ~/Downloads/kgreen-po-tracker.zip billingdata/server billingdata/client/dist billingdata/package.json billingdata/package-lock.json billingdata/README.md billingdata/.gitignore -x \"billingdata/server/node_modules/*\" \"billingdata/server/data/*\" \"billingdata/.git/*\" \"billingdata/.claude/*\" -q)",
+      "Bash(scp /Users/macbookpro/Documents/billingdata/server/src/routes/receivables.js root@27.100.38.230:/opt/billingdata/server/src/routes/)",
+      "Bash(curl -s -X OPTIONS https://kgreenact.in/api/client-invoices/test -I)",
+      "Bash(cat)",
+      "Bash(bash /tmp/check_deployment.sh)"
     ]
   }
 }

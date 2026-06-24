@@ -249,6 +249,47 @@ r.post('/vendor-pos/:id/approve', (req, res) => {
   res.json({ ok: true });
 });
 
+// Cancel a vendor PO (any user). Not allowed if vendor invoice exists or payments made.
+r.post('/vendor-pos/:id/cancel', (req, res) => {
+  const po = db.prepare('SELECT * FROM vendor_pos WHERE id=?').get(req.params.id);
+  if (!po) return res.status(404).json({ error: 'Not found' });
+
+  // Check if vendor invoice exists
+  const invoiceCount = db.prepare('SELECT COUNT(*) n FROM vendor_invoices WHERE vendor_po_id=? AND status != "Disputed"').get(po.id).n;
+  if (invoiceCount > 0) return res.status(409).json({ error: 'Cannot cancel: vendor invoice already raised. Delete the invoice first.' });
+
+  // Check if payments made to vendor for this PO
+  const paymentCount = db.prepare(`
+    SELECT COUNT(*) n FROM vendor_payments vp
+    WHERE vp.id IN (SELECT DISTINCT payment_id FROM payment_allocations pa
+      JOIN vendor_invoices vi ON vi.id = pa.vendor_invoice_id
+      WHERE vi.vendor_po_id = ?)
+  `).get(po.id).n;
+  if (paymentCount > 0) return res.status(409).json({ error: 'Cannot cancel: payments already made against this PO.' });
+
+  db.prepare('UPDATE vendor_pos SET status=?, updated_at=? WHERE id=?').run('Cancelled', now(), po.id);
+  logActivity({ kind: 'vendor_po_cancelled', entity: 'vendor_pos', entity_id: po.id, ref: po.our_po_no, party: vendorName(po.vendor_id), amount: po.totals_total, description: 'Vendor PO cancelled' });
+  res.json({ ok: true });
+});
+
+// Delete a vendor PO (super-admin only). Not allowed if vendor invoice exists.
+r.delete('/vendor-pos/:id', (req, res) => {
+  if (!req.user?.isSuperAdmin) return res.status(403).json({ error: 'Super admin only' });
+
+  const po = db.prepare('SELECT * FROM vendor_pos WHERE id=?').get(req.params.id);
+  if (!po) return res.status(404).json({ error: 'Not found' });
+
+  // Check if vendor invoice exists
+  const invoiceCount = db.prepare('SELECT COUNT(*) n FROM vendor_invoices WHERE vendor_po_id=?').get(po.id).n;
+  if (invoiceCount > 0) return res.status(409).json({ error: 'Cannot delete: vendor invoice(s) exist. Delete the invoice first.' });
+
+  db.prepare('DELETE FROM vendor_po_lines WHERE vendor_po_id=?').run(po.id);
+  db.prepare('DELETE FROM vendor_pos WHERE id=?').run(po.id);
+
+  logActivity({ kind: 'vendor_po_deleted', entity: 'vendor_pos', entity_id: po.id, ref: po.our_po_no, party: vendorName(po.vendor_id), amount: po.totals_total, description: 'Vendor PO deleted' });
+  res.json({ ok: true });
+});
+
 // ============================= VENDOR INVOICES ===============================
 r.get('/vendor-invoices', (req, res) => {
   let rows = db.prepare('SELECT * FROM vendor_invoices ORDER BY invoice_date DESC').all().map(enrichVendorInvoice).filter(visibleVendor(req));
