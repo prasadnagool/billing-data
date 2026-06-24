@@ -364,8 +364,12 @@ export default function Dashboard() {
     setCfg(next);
   };
   const saveAndClose = async () => {
-    try { await api.put('/prefs/dashboard', { value: cfg }); } catch (e) { alert('Could not save layout: ' + e.message); }
-    setEditing(false);
+    try {
+      await api.put('/prefs/dashboard', { value: cfg });
+      setEditing(false);
+    } catch (e) {
+      alert('Could not save layout: ' + e.message);
+    }
   };
   const resetCfg = async () => {
     const d = DEFAULT_CFG(); setCfg(d);
