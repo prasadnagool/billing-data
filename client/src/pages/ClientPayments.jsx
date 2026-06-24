@@ -5,15 +5,14 @@ import { api } from '../api.js';
 import { canEdit } from '../auth.js';
 import { PageHeader, DataTable, Amt } from '../components/ui.jsx';
 import { fmtDate  } from '../format.js';
-import { exportCsv, csvRupees, inPeriod, PERIODS_FY } from '../csv.js';
+import { exportCsv, csvRupees } from '../csv.js';
 
 export default function ClientPayments() {
   const nav = useNavigate();
-  const [period, setPeriod] = useState('month');
   const { data, loading } = useFetch('/receipts');
   const { data: clientsData } = useFetch('/clients?page=1&limit=1000&search=');
   const clients = clientsData?.clients || [];
-  const rows = (data || []).filter((r) => inPeriod(r.date, period));
+  const rows = data || [];
 
   // Quick record: search client → show their open invoices → select multiple → record
   const [q, setQ] = useState('');
@@ -59,7 +58,7 @@ export default function ClientPayments() {
     else if (e.key === 'Enter') { e.preventDefault(); pickClient(matches[idx >= 0 ? idx : 0]); }
   };
 
-  const exportRows = () => exportCsv(`client-receipts-${period}.csv`, [
+  const exportRows = () => exportCsv(`client-receipts.csv`, [
     { label: 'Date', value: (r) => r.date },
     { label: 'Receipt #', value: (r) => r.receipt_no },
     { label: 'Client', value: (r) => r.client_name },
@@ -131,12 +130,7 @@ export default function ClientPayments() {
           )}
         </div>
       )}
-      <div className="flex gap-2 mb-3 items-center">
-        <select className="field w-auto" value={period} onChange={(e) => setPeriod(e.target.value)}>
-          {PERIODS_FY.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
-        <span className="text-xs text-muted ml-1">{rows.length} receipt{rows.length === 1 ? '' : 's'}</span>
-      </div>
+      <div className="text-xs text-muted mb-3">{rows.length} receipt{rows.length === 1 ? '' : 's'}</div>
       <DataTable
         rows={loading ? [] : rows}
         columns={[
