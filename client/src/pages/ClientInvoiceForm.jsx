@@ -69,7 +69,7 @@ export default function ClientInvoiceForm() {
         </FormRow>
         <FormRow>
           <Field label="Due date"><Input type="date" value={form.due_date} onChange={set('due_date')} /></Field>
-          <div />
+          <Field label="Invoice number"><Input value={form.invoice_no || ''} onChange={set('invoice_no')} placeholder="Leave blank to auto-generate" /></Field>
         </FormRow>
         {poSummary && (
           <div className="grid grid-cols-3 gap-3 mt-1 border-t border-line pt-3 text-xs">

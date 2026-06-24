@@ -256,7 +256,16 @@ r.post('/client-invoices', (req, res) => {
     return res.status(409).json({ error: `Invoice amount without tax (${(t.taxable / 100).toFixed(2)}) exceeds the PO balance (${(poBalance / 100).toFixed(2)}).` });
   }
   const issue = b.action !== 'draft';
-  const invoice_no = issue ? nextNumber('client_invoice', 'INV-CL') : null;
+  // Use the number the user typed (if any), else auto-generate the next INV-CL.
+  const custNo = b.invoice_no != null ? String(b.invoice_no).trim() : '';
+  let invoice_no = null;
+  if (issue) {
+    invoice_no = custNo || nextNumber('client_invoice', 'INV-CL');
+    if (custNo) {
+      const dup = db.prepare('SELECT 1 FROM client_invoices WHERE invoice_no=?').get(custNo);
+      if (dup) return res.status(409).json({ error: `Invoice number "${custNo}" already exists.` });
+    }
+  }
   db.prepare(`INSERT INTO client_invoices (id,invoice_no,client_po_id,client_id,invoice_date,due_date,place_of_supply,gst_treatment,currency,reverse_charge,irn,notes,remarks,status,totals_taxable,totals_gst,totals_total,created_at,updated_at)
     VALUES (@id,@invoice_no,@client_po_id,@client_id,@invoice_date,@due_date,@place_of_supply,@gst_treatment,@currency,@reverse_charge,@irn,@notes,@remarks,@status,@tt,@tg,@to,@ts,@ts)`)
     .run({ id, invoice_no, client_po_id: po.id, client_id: po.client_id, invoice_date: b.invoice_date, due_date: b.due_date || null, place_of_supply: b.place_of_supply || po.place_of_supply, gst_treatment: b.gst_treatment || po.gst_treatment, currency: po.currency || 'INR', reverse_charge: b.reverse_charge ? 1 : 0, irn: null, notes: b.notes || null, remarks: b.remarks || null, status: issue ? 'Open' : 'Draft', tt: t.taxable, tg: t.gst, to: t.total, ts });
