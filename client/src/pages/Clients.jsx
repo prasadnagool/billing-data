@@ -8,20 +8,16 @@ import { canEdit } from '../auth.js';
 
 const FIELDS = ['name', 'country', 'gstin', 'pan', 'state_code', 'state_name', 'currency', 'payment_terms', 'address_line1', 'address_line2', 'city', 'pincode', 'email', 'phone', 'notes', 'contacts'];
 const isDomestic = (c) => (c.country || 'India') === 'India';
-const PAGE_SIZE = 10;
 
 export default function Clients() {
   const nav = useNavigate();
   const fileRef = useRef(null);
   const [scope, setScope] = useState('all'); // all | domestic | international
-  const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const { data, loading, reload } = useFetch(`/clients?page=${page}&limit=${PAGE_SIZE}&search=${encodeURIComponent(search)}`);
+  const { data, loading, reload } = useFetch(`/clients?search=${encodeURIComponent(search)}`);
 
   const clients = data?.clients || [];
   const total = data?.total || 0;
-  const hasMore = data?.hasMore || false;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const rows = clients.filter((c) =>
     scope === 'all' ? true : scope === 'domestic' ? isDomestic(c) : !isDomestic(c));
@@ -109,29 +105,6 @@ export default function Clients() {
           ) },
         ]}
       />
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4 pt-3 border-t border-line">
-          <span className="text-xs text-muted">
-            Page {page} of {totalPages} · Showing {rows.length} of {total} client{total === 1 ? '' : 's'}
-          </span>
-          <div className="flex gap-2">
-            <button
-              className="btn btn-sm"
-              disabled={page === 1}
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-            >
-              ← Prev
-            </button>
-            <button
-              className="btn btn-sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            >
-              Next →
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
