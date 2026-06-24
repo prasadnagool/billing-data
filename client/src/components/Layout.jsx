@@ -118,6 +118,8 @@ const railCls = ({ isActive }) =>
 
 function Sidebar({ rail }) {
   const loc = useLocation();
+  const [collapsed, setCollapsed] = useState({});
+  const toggle = (s) => setCollapsed((c) => ({ ...c, [s]: !c[s] }));
   const groups = NAV.filter((grp) => (!grp.superAdminOnly || isSuperAdmin()))
     .map((grp) => ({ ...grp, items: grp.items.filter((it) => it.key === 'admin' || canView(it.key)) }))
     .filter((grp) => grp.items.length > 0);
@@ -127,28 +129,6 @@ function Sidebar({ rail }) {
     if (it.end) return loc.pathname === it.to;
     return loc.pathname.startsWith(it.to);
   }))?.section;
-
-  // Initialize collapsed state: all sections collapsed EXCEPT the active one
-  const [collapsed, setCollapsed] = useState(() => {
-    const init = {};
-    groups.forEach((grp) => {
-      init[grp.section] = grp.section !== activeSection;
-    });
-    return init;
-  });
-
-  // Update collapsed state when route changes
-  useEffect(() => {
-    setCollapsed((prev) => {
-      const updated = {};
-      groups.forEach((grp) => {
-        updated[grp.section] = grp.section !== activeSection;
-      });
-      return updated;
-    });
-  }, [activeSection, groups]);
-
-  const toggle = (s) => setCollapsed((c) => ({ ...c, [s]: !c[s] }));
 
   return (
     <aside style={{ backgroundColor: 'var(--c-sidebar)' }} className={`${rail ? 'w-[60px]' : 'w-[230px]'} text-white/90 py-4 flex-shrink-0 overflow-y-auto overflow-x-hidden transition-[width] duration-200`}>
@@ -171,8 +151,10 @@ function Sidebar({ rail }) {
         </nav>
       ) : (
         groups.map((grp) => {
-          // Section is collapsed if marked in collapsed state
-          const isCol = !!collapsed[grp.section];
+          // If user has toggled it, use that. Otherwise, only active section is expanded
+          const isActive = grp.section === activeSection;
+          const userToggled = grp.section in collapsed;
+          const isCol = userToggled ? collapsed[grp.section] : !isActive;
           return (
             <div key={grp.section}>
               <button type="button" onClick={() => toggle(grp.section)}
