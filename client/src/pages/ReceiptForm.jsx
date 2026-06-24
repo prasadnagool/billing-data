@@ -46,7 +46,21 @@ export default function ReceiptForm() {
     if (invId && clients) api.get(`/client-invoices/${invId}`).then((inv) => setForm((f) => ({ ...f, client_id: inv.client_id, gross: inv.balance })));
     const cid = sp.get('client');
     if (cid) setForm((f) => (f.client_id ? f : { ...f, client_id: cid }));
-  }, [clients]);
+    // Handle pre-selected invoices from ClientPayments
+    const invoiceIds = sp.get('invoices');
+    if (invoiceIds && cid) {
+      const ids = invoiceIds.split(',');
+      const newAllocs = {};
+      ids.forEach(id => {
+        const inv = openInvoices.find(i => String(i.id) === id);
+        if (inv) newAllocs[id] = (inv.balance / 100).toString();
+      });
+      setAllocs(newAllocs);
+      // Set gross to sum of allocations
+      const totalAlloc = Object.values(newAllocs).reduce((s, v) => s + Math.round((Number(v) || 0) * 100), 0);
+      if (totalAlloc > 0) setForm((f) => ({ ...f, gross: totalAlloc }));
+    }
+  }, [clients, openInvoices]);
 
   const net = (form.gross || 0) - (form.tds || 0) - (form.charges || 0);
   const allocTotal = Object.values(allocs).reduce((s, v) => s + Math.round((Number(v) || 0) * 100), 0);
