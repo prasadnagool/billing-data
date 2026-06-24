@@ -13,7 +13,11 @@ export default function PaymentForm() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
   const { data: vendors } = useFetch('/vendors?active=1');
-  const [form, setForm] = useState({ vendor_id: '', date: today(), mode: 'NEFT', bank_account: 'HDFC ****1234', utr: '', tds_section: '194C' });
+  const { data: facilities } = useFetch('/facilities');
+  // Accounts you can pay from = Treasury OD / Current facilities.
+  const banks = (facilities || []).filter((f) => (f.type === 'OD' || f.type === 'Current') && f.active !== 0);
+  const [form, setForm] = useState({ vendor_id: '', date: today(), mode: 'NEFT', bank_account: '', utr: '', tds_section: '194C' });
+  useEffect(() => { if (banks.length && !form.bank_account) setForm((f) => ({ ...f, bank_account: banks[0].name })); }, [banks.length]); // eslint-disable-line
   const [openInvoices, setOpenInvoices] = useState([]);
   const [allocs, setAllocs] = useState({});
   const [fxRate, setFxRate] = useState('');     // INR per 1 unit of foreign currency
@@ -76,7 +80,11 @@ export default function PaymentForm() {
         </FormRow>
         <FormRow cols={4}>
           <Field label="Mode"><Select value={form.mode} onChange={set('mode')}>{['NEFT', 'RTGS', 'UPI', 'Cheque', 'Wire'].map((m) => <option key={m}>{m}</option>)}</Select></Field>
-          <Field label="Bank account"><Input value={form.bank_account} onChange={set('bank_account')} /></Field>
+          <Field label="Paid from (bank)">
+            {banks.length > 0
+              ? <Select value={form.bank_account} onChange={set('bank_account')}><option value="">— Select account —</option>{banks.map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}</Select>
+              : <Input value={form.bank_account} onChange={set('bank_account')} placeholder="Add OD/Current accounts in Treasury" />}
+          </Field>
           <Field label="UTR"><Input value={form.utr} onChange={set('utr')} /></Field>
           {foreign
             ? <Field label={`Exchange rate (INR per 1 ${currency}) *`}><Input type="number" value={fxRate} onChange={(e) => setFxRate(e.target.value)} placeholder="e.g. 83.50" /></Field>

@@ -11,7 +11,12 @@ export default function ReceiptForm() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
   const { data: clients } = useFetch('/clients?active=1');
-  const [form, setForm] = useState({ client_id: '', date: today(), mode: 'NEFT', bank_account: 'HDFC ****1234', utr: '', gross: 0, tds: 0, charges: 0, tds_section: '' });
+  const { data: facilities } = useFetch('/facilities');
+  // Bank accounts money can be received into = Treasury OD / Current facilities.
+  const banks = (facilities || []).filter((f) => (f.type === 'OD' || f.type === 'Current') && f.active !== 0);
+  const [form, setForm] = useState({ client_id: '', date: today(), mode: 'NEFT', bank_account: '', utr: '', gross: 0, tds: 0, charges: 0, tds_section: '' });
+  // Default to the first account once facilities load.
+  useEffect(() => { if (banks.length && !form.bank_account) setForm((f) => ({ ...f, bank_account: banks[0].name })); }, [banks.length]); // eslint-disable-line
   const [openInvoices, setOpenInvoices] = useState([]);
   const [allocs, setAllocs] = useState({});
   const [fxRate, setFxRate] = useState('');
@@ -67,7 +72,11 @@ export default function ReceiptForm() {
         </FormRow>
         <FormRow cols={3}>
           <Field label="Mode"><Select value={form.mode} onChange={set('mode')}>{['NEFT', 'RTGS', 'UPI', 'Cheque', 'Wire'].map((m) => <option key={m}>{m}</option>)}</Select></Field>
-          <Field label="Bank account"><Input value={form.bank_account} onChange={set('bank_account')} /></Field>
+          <Field label="Received in (bank)">
+            {banks.length > 0
+              ? <Select value={form.bank_account} onChange={set('bank_account')}><option value="">— Select account —</option>{banks.map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}</Select>
+              : <Input value={form.bank_account} onChange={set('bank_account')} placeholder="Add OD/Current accounts in Treasury" />}
+          </Field>
           <Field label="UTR / Cheque #"><Input value={form.utr} onChange={set('utr')} /></Field>
         </FormRow>
         <FormRow cols={4}>
