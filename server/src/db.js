@@ -111,6 +111,16 @@ if (!hasSuper) {
 // Per-payee default description (e.g. "Rent for the month") — added later.
 ensureColumns('expense_payees', [['default_description', 'TEXT']]);
 
+// Enforce unique document numbers at the DB level (NULLs allowed → drafts are
+// exempt). Wrapped so a pre-existing duplicate can't crash boot; the route-level
+// checks still apply. Partial index ignores NULL/blank.
+for (const [name, sql] of [
+  ['ux_client_invoices_no', `CREATE UNIQUE INDEX IF NOT EXISTS ux_client_invoices_no ON client_invoices(invoice_no) WHERE invoice_no IS NOT NULL AND invoice_no <> ''`],
+  ['ux_vendor_pos_no', `CREATE UNIQUE INDEX IF NOT EXISTS ux_vendor_pos_no ON vendor_pos(our_po_no) WHERE our_po_no IS NOT NULL AND our_po_no <> ''`],
+]) {
+  try { db.exec(sql); } catch (e) { console.warn(`[db] could not create ${name} (duplicates may exist): ${e.message}`); }
+}
+
 // Seed default expense categories (idempotent — only when the table is empty).
 const catCount = db.prepare('SELECT COUNT(*) AS n FROM expense_categories').get().n;
 if (catCount === 0) {

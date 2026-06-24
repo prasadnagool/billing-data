@@ -191,9 +191,14 @@ r.post('/vendor-pos', (req, res) => {
       our_po_no = nextNumber('vendor_po', 'PO', { fy, pad: 2, format: (num) => `PO_KG_${fy}_${num}` });
     }
   }
-  db.prepare(`INSERT INTO vendor_pos (id,our_po_no,vendor_id,linked_client_po_id,po_date,required_by,payment_terms,gst_treatment,tds_section,currency,approval_workflow,ship_to,notes,status,totals_taxable,totals_gst,totals_total,created_at,updated_at)
-    VALUES (@id,@our_po_no,@vendor_id,@lc,@po_date,@req,@pt,@gst,@tds,@currency,@wf,@ship,@notes,@status,@tt,@tg,@to,@ts,@ts)`)
-    .run({ id, our_po_no, vendor_id: b.vendor_id, lc: b.linked_client_po_id || null, po_date: b.po_date, req: b.required_by || null, pt: b.payment_terms || vendor.payment_terms, gst: b.gst_treatment || 'IGST', tds: b.tds_section || vendor.tds_section, currency: (b.currency || vendor.currency || 'INR').toUpperCase(), wf, ship: b.ship_to || null, notes: b.notes || null, status, tt: t.taxable, tg: t.gst, to: t.total, ts });
+  try {
+    db.prepare(`INSERT INTO vendor_pos (id,our_po_no,vendor_id,linked_client_po_id,po_date,required_by,payment_terms,gst_treatment,tds_section,currency,approval_workflow,ship_to,notes,status,totals_taxable,totals_gst,totals_total,created_at,updated_at)
+      VALUES (@id,@our_po_no,@vendor_id,@lc,@po_date,@req,@pt,@gst,@tds,@currency,@wf,@ship,@notes,@status,@tt,@tg,@to,@ts,@ts)`)
+      .run({ id, our_po_no, vendor_id: b.vendor_id, lc: b.linked_client_po_id || null, po_date: b.po_date, req: b.required_by || null, pt: b.payment_terms || vendor.payment_terms, gst: b.gst_treatment || 'IGST', tds: b.tds_section || vendor.tds_section, currency: (b.currency || vendor.currency || 'INR').toUpperCase(), wf, ship: b.ship_to || null, notes: b.notes || null, status, tt: t.taxable, tg: t.gst, to: t.total, ts });
+  } catch (e) {
+    if (/UNIQUE/.test(e.message)) return res.status(409).json({ error: `PO number "${our_po_no}" already exists.` });
+    throw e;
+  }
   const ins = db.prepare(`INSERT INTO vendor_po_lines (id,vendor_po_id,client_po_line_id,description,hsn_sac,qty,rate,gst_pct,taxable,gst,total,note,sort_order) VALUES (@id,@vendor_po_id,@client_po_line_id,@description,@hsn_sac,@qty,@rate,@gst_pct,@taxable,@gst,@total,@note,@sort_order)`);
   lines.forEach((l) => ins.run(l));
   const saved = db.prepare('SELECT * FROM vendor_pos WHERE id=?').get(id);
