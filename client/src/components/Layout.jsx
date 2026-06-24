@@ -311,6 +311,9 @@ function Topbar({ onToggleRail }) {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
         </button>
         <div className="text-xs text-muted">{crumb}</div>
+        <span className="text-[10px] text-muted/60 font-mono" title="Loaded bundle build id — if this is old after a change, hard-refresh (Cmd+Shift+R)">
+          build {typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev'}
+        </span>
       </div>
       <div className="flex items-center gap-3">
         <span className="relative text-muted" title="Notifications">
