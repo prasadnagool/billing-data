@@ -68,7 +68,7 @@ export default function Clients() {
           className="input"
           placeholder="Search clients by name..."
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          onChange={(e) => setSearch(e.target.value)}
           style={{ maxWidth: 250 }}
         />
         <div className="flex gap-3 text-xs">

@@ -126,7 +126,10 @@
       "Bash(curl -s 'http://localhost:5173/api/client-pos')",
       "Bash(echo \"  client-pos:      $\\(curl -s 'http://localhost:5173/api/client-pos')",
       "Bash(pkill -f \"node server/index.js\")",
-      "Bash(pkill -f \"vite\")"
+      "Bash(pkill -f \"vite\")",
+      "Bash(scp -r /Users/macbookpro/Documents/billingdata/client/dist/* root@27.100.38.230:/opt/billingdata/client/dist/)",
+      "Bash(git revert *)",
+      "Bash(curl -s http://localhost:4000/api/clients)"
     ]
   }
 }
