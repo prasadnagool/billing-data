@@ -19,7 +19,24 @@
       "Bash(scp ~/Downloads/kgreen-po-tracker.zip root@27.100.38.230:/opt/)",
       "Bash(ssh root@27.100.38.230 \"cd /opt/billingdata && unzip -o /opt/kgreen-po-tracker.zip && pm2 restart po-tracker && pm2 logs po-tracker --lines 10\")",
       "Bash(ssh root@27.100.38.230 \"pm2 status\")",
-      "Bash(curl -s https://kgreenact.in/api/settings/invoice-fy)"
+      "Bash(curl -s https://kgreenact.in/api/settings/invoice-fy)",
+      "Bash(ssh root@27.100.38.230 \"cd /opt/billingdata && unzip -o /opt/kgreen-po-tracker.zip && pm2 restart po-tracker\")",
+      "Bash(curl -s https://kgreenact.in/api/client-invoices?q=test)",
+      "Bash(curl -s 'https://kgreenact.in/api/client-invoices')",
+      "Bash(ssh root@27.100.38.230 \"grep -n 'deleteInvoice\\\\|Delete invoice' /opt/billingdata/client/dist/assets/*.js | head -5\")",
+      "Bash(ssh root@27.100.38.230 \"grep -c 'isSuperAdmin' /opt/billingdata/client/dist/assets/index-q6DGA_Ab.js\")",
+      "Bash(ssh root@27.100.38.230 \"ls -lh /opt/billingdata/client/dist/assets/\")",
+      "Bash(ssh root@27.100.38.230 \"cat /opt/billingdata/client/dist/index.html\")",
+      "Bash(ssh root@27.100.38.230 \"stat /opt/billingdata/client/dist/assets/index-BW632NiU.js | grep Modify\")",
+      "Bash(ssh root@27.100.38.230 \"rm -rf /opt/billingdata/client/dist/assets/* && echo 'Cleaned old assets'\")",
+      "Bash(ssh root@27.100.38.230 \"cd /opt/billingdata && unzip -o /opt/kgreen-po-tracker.zip 'billingdata/client/dist/*' && pm2 restart po-tracker && sleep 2 && cat /opt/billingdata/client/dist/index.html | grep -o 'index-[^\\\\\"]*'\")",
+      "Bash(ssh root@27.100.38.230 *)",
+      "Bash(curl -s https://kgreenact.in/api/client-invoices)",
+      "Bash(curl -s https://kgreenact.in/)",
+      "Bash(curl -s https://kgreenact.in/client-invoices)",
+      "Bash(curl -s https://kgreenact.in/api/receipts)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
