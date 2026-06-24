@@ -7,20 +7,16 @@ import { exportCsv, parseCsv } from '../csv.js';
 import { canEdit } from '../auth.js';
 
 const FIELDS = ['name', 'country', 'gstin', 'pan', 'state_code', 'state_name', 'currency', 'payment_terms', 'address_line1', 'address_line2', 'city', 'pincode', 'email', 'phone', 'notes', 'contacts'];
-const isDomestic = (c) => (c.country || 'India') === 'India';
 
 export default function Clients() {
   const nav = useNavigate();
   const fileRef = useRef(null);
-  const [scope, setScope] = useState('all'); // all | domestic | international
   const [search, setSearch] = useState('');
   const { data, loading, reload } = useFetch(`/clients?search=${encodeURIComponent(search)}`);
 
   const clients = data?.clients || [];
   const total = data?.total || 0;
-
-  const rows = clients.filter((c) =>
-    scope === 'all' ? true : scope === 'domestic' ? isDomestic(c) : !isDomestic(c));
+  const rows = clients;
 
   const doExport = () => exportCsv('clients.csv', FIELDS.map((f) => ({ label: f, value: (r) => r[f] ?? '' })), rows);
 
@@ -68,17 +64,9 @@ export default function Clients() {
           className="input"
           placeholder="Search clients by name..."
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          onChange={(e) => setSearch(e.target.value)}
           style={{ maxWidth: 250 }}
         />
-        <div className="flex gap-3 text-xs">
-          {[['all', 'All'], ['domestic', 'Domestic'], ['international', 'International']].map(([v, l]) => (
-            <label key={v} className="flex items-center gap-1.5 cursor-pointer">
-              <input type="radio" name="clientScope" checked={scope === v} onChange={() => setScope(v)} />
-              {l}
-            </label>
-          ))}
-        </div>
         <span className="text-[11px] text-muted">{total} total</span>
       </div>
       <p className="text-[11px] text-muted mb-3">Tip: export first to get the column template, fill in new rows, then import. Only <b>name</b> is required.</p>
