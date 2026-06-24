@@ -387,6 +387,12 @@ export default function Dashboard() {
           <button className="btn btn-primary" onClick={() => setEditing((e) => !e)}>
             {editing ? '✓ Done arranging' : '⚙ Customize layout'}
           </button>
+          {editing && (
+            <>
+              <button className="btn btn-primary" onClick={saveAndClose}>💾 Save layout</button>
+              <button className="btn" onClick={resetCfg}>↺ Reset</button>
+            </>
+          )}
           <WeeklyDashboardButton />
         </div>
       </div>
@@ -409,10 +415,6 @@ export default function Dashboard() {
               </li>
             ))}
           </ul>
-          <div className="flex gap-2 mt-3">
-            <button className="btn btn-primary" onClick={saveAndClose}>Save layout</button>
-            <button className="btn" onClick={resetCfg}>Reset to default</button>
-          </div>
         </Card>
       )}
 
