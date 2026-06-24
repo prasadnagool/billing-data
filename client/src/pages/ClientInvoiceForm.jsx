@@ -14,6 +14,8 @@ export default function ClientInvoiceForm() {
   const [sp] = useSearchParams();
   const { data: pos } = useFetch('/client-pos');
   const { data: products } = useFetch('/products');
+  const { data: fyData } = useFetch('/settings/invoice-fy');
+  const invFy = fyData?.fy || '26-27';
   const [poId, setPoId] = useState(sp.get('po') || '');
   const [poSummary, setPoSummary] = useState(null); // { totals_total, invoiced, balance }
   const [form, setForm] = useState({ invoice_date: today(), due_date: '', remarks: '' });
@@ -69,7 +71,12 @@ export default function ClientInvoiceForm() {
         </FormRow>
         <FormRow>
           <Field label="Due date"><Input type="date" value={form.due_date} onChange={set('due_date')} /></Field>
-          <Field label="Invoice number"><Input value={form.invoice_no || ''} onChange={set('invoice_no')} placeholder="Blank → INV/KG/26-27/001" /></Field>
+          <Field label="Invoice number">
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted whitespace-nowrap font-mono">INV/KG/{invFy}/</span>
+              <Input value={form.invoice_no || ''} onChange={set('invoice_no')} placeholder="001" style={{ maxWidth: 110 }} />
+            </div>
+          </Field>
         </FormRow>
         {poSummary && (
           <div className="grid grid-cols-3 gap-3 mt-1 border-t border-line pt-3 text-xs">

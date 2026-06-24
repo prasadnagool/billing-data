@@ -89,6 +89,7 @@ const NAV = [
     items: [
       { to: '/admin/users', label: 'Users', key: 'admin', icon: 'users' },
       { to: '/admin/roles', label: 'Roles & privileges', key: 'admin', icon: 'shield' },
+      { to: '/admin/financial-year', label: 'Financial Year', key: 'admin', icon: 'clock' },
       { to: '/admin/backups', label: 'Backups', key: 'admin', icon: 'database' },
     ],
   },
@@ -196,6 +197,7 @@ const CRUMBS = {
   '/reports/tally': 'Reports › Tally Export',
   '/admin/users': 'Administration › Users',
   '/admin/roles': 'Administration › Roles & privileges',
+  '/admin/financial-year': 'Administration › Financial Year',
   '/admin/backups': 'Administration › Backups',
 };
 

@@ -181,6 +181,18 @@ export function fyLabel(dateStr) {
   return `${String(start).slice(2)}-${String(start + 1).slice(2)}`;
 }
 
+// The financial year currently used for invoice numbering — a super-admin
+// setting (key 'invoice_fy'), defaulting to today's FY until changed.
+export function currentInvoiceFy() {
+  const row = db.prepare("SELECT value FROM settings WHERE key='invoice_fy'").get();
+  return (row && row.value) || fyLabel();
+}
+// "26-27" -> "27-28"
+export function nextFy(fy) {
+  const [a, b] = String(fy).split('-').map(Number);
+  return `${String(a + 1).padStart(2, '0')}-${String(b + 1).padStart(2, '0')}`;
+}
+
 function fyShort(fy) {
   // 'ALL' -> current calendar year; '2026-27' -> '2026'
   if (fy === 'ALL') return String(new Date().getFullYear());

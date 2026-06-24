@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import multer from 'multer';
 import Database from 'better-sqlite3';
-import { db, uuid, now } from '../db.js';
+import { db, uuid, now, currentInvoiceFy, nextFy } from '../db.js';
 import { requireManager, requireSuperAdmin } from '../auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -183,6 +183,23 @@ router.post('/admin/reset-data', requireManager, (req, res) => {
     db.pragma('foreign_keys = ON');
   }
   res.json({ ok: true, cleared: tables.map((t) => t.name) });
+});
+
+// ===================== Invoice financial year =====================
+// Current FY used for invoice numbers (any logged-in user can read it so the
+// invoice form can show the prefix).
+router.get('/settings/invoice-fy', (req, res) => {
+  const fy = currentInvoiceFy();
+  res.json({ fy, next: nextFy(fy) });
+});
+
+// Super admin advances/sets the invoice FY. After this, new invoices number
+// as INV/KG/<fy>/… and the per-FY sequence restarts at 1.
+router.post('/admin/invoice-fy', requireSuperAdmin, (req, res) => {
+  const fy = String(req.body && req.body.fy || '').trim();
+  if (!/^\d{2}-\d{2}$/.test(fy)) return res.status(400).json({ error: 'Financial year must look like 27-28.' });
+  db.prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES ('invoice_fy', ?)`).run(fy);
+  res.json({ ok: true, fy });
 });
 
 // ===================== ROLES (super admin only) =====================

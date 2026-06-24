@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, uuid, now, nextNumber, fyLabel, addMonths, logActivity, UPLOAD_DIR } from '../db.js';
+import { db, uuid, now, nextNumber, fyLabel, currentInvoiceFy, addMonths, logActivity, UPLOAD_DIR } from '../db.js';
 import { computeLine, sumLines } from '../lib/compute.js';
 import {
   enrichClientPo, enrichClientInvoice, clientPoRollup, invoiceRollup, clientName, disabledClientIds,
@@ -280,16 +280,15 @@ r.post('/client-invoices', (req, res) => {
     return res.status(409).json({ error: `Invoice amount without tax (${(t.taxable / 100).toFixed(2)}) exceeds the PO balance (${(poBalance / 100).toFixed(2)}).` });
   }
   const issue = b.action !== 'draft';
-  // Use the number the user typed (if any), else auto-generate the next INV-CL.
-  const custNo = b.invoice_no != null ? String(b.invoice_no).trim() : '';
+  // Number format INV/KG/<FY>/<suffix>. <FY> is the super-admin-controlled
+  // invoice FY; the user types only the suffix. Blank suffix → next sequence.
+  const suffix = b.invoice_no != null ? String(b.invoice_no).trim() : '';
   let invoice_no = null;
   if (issue) {
-    const fy = fyLabel(b.invoice_date);
-    invoice_no = custNo || nextNumber('client_invoice', 'INV', { fy, pad: 3, format: (num) => `INV/KG/${fy}/${num}` });
-    if (custNo) {
-      const dup = db.prepare('SELECT 1 FROM client_invoices WHERE invoice_no=?').get(custNo);
-      if (dup) return res.status(409).json({ error: `Invoice number "${custNo}" already exists.` });
-    }
+    const fy = currentInvoiceFy();
+    invoice_no = suffix ? `INV/KG/${fy}/${suffix}` : nextNumber('client_invoice', 'INV', { fy, pad: 3, format: (num) => `INV/KG/${fy}/${num}` });
+    const dup = db.prepare('SELECT 1 FROM client_invoices WHERE invoice_no=?').get(invoice_no);
+    if (dup) return res.status(409).json({ error: `Invoice number "${invoice_no}" already exists.` });
   }
   try {
     db.prepare(`INSERT INTO client_invoices (id,invoice_no,client_po_id,client_id,invoice_date,due_date,place_of_supply,gst_treatment,currency,reverse_charge,irn,notes,remarks,status,totals_taxable,totals_gst,totals_total,created_at,updated_at)
