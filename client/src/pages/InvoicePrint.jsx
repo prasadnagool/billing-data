@@ -289,7 +289,7 @@ function BankSignatory({ accent, grand, cur }) {
       <div className="text-right">
         <div className="text-muted text-[10px] uppercase">Amount Payable</div>
         <div className="font-bold text-[16px]" style={{ color: accent }}>{amt(grand, cur, true)}</div>
-        <div className="mt-10 text-[11px]">For <b>{COMPANY.shortName}</b></div>
+        <div className="mt-10 text-[11px]">For <b>{COMPANY.name}</b></div>
         <div className="mt-6 text-muted">Authorized Signatory</div>
       </div>
     </div>

@@ -156,7 +156,7 @@ export default function VendorPoPrint() {
             {po.notes && <><div className="font-semibold text-muted uppercase text-[10px] mb-1">Notes</div><div className="whitespace-pre-line">{po.notes}</div></>}
           </div>
           <div className="text-right">
-            <div className="mt-8 text-[11px]">For <b>{COMPANY.shortName}</b></div>
+            <div className="mt-8 text-[11px]">For <b>{COMPANY.name}</b></div>
             <div className="mt-8 text-muted">Authorized Signatory</div>
           </div>
         </div>
