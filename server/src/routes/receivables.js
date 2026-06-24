@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, uuid, now, nextNumber, fyLabel, logActivity, UPLOAD_DIR } from '../db.js';
+import { db, uuid, now, nextNumber, fyLabel, addMonths, logActivity, UPLOAD_DIR } from '../db.js';
 import { computeLine, sumLines } from '../lib/compute.js';
 import {
   enrichClientPo, enrichClientInvoice, clientPoRollup, invoiceRollup, clientName, disabledClientIds,
@@ -174,10 +174,11 @@ r.post('/client-pos', (req, res) => {
     our_po_no = cust || nextNumber('client_po', 'PO-CL');
     if (cust && db.prepare('SELECT 1 FROM client_pos WHERE our_po_no=?').get(cust)) return res.status(409).json({ error: `PO number "${cust}" already exists.` });
   }
+  const renewal_date = b.renewal_date || addMonths(b.po_date, 9);
   try {
-    db.prepare(`INSERT INTO client_pos (id,our_po_no,client_po_ref,client_id,po_date,expected_delivery,payment_terms,currency,gst_treatment,place_of_supply,notes,status,totals_taxable,totals_gst,totals_total,created_at,updated_at)
-      VALUES (@id,@our_po_no,@client_po_ref,@client_id,@po_date,@expected_delivery,@payment_terms,@currency,@gst_treatment,@place_of_supply,@notes,@status,@tt,@tg,@to,@ts,@ts)`)
-      .run({ id, our_po_no, client_po_ref: b.client_po_ref || null, client_id: b.client_id, po_date: b.po_date, expected_delivery: b.expected_delivery || null, payment_terms: b.payment_terms || null, currency, gst_treatment: b.gst_treatment || 'IGST', place_of_supply: b.place_of_supply || null, notes: b.notes || null, status: issue ? 'Open' : 'Draft', tt: t.taxable, tg: t.gst, to: t.total, ts });
+    db.prepare(`INSERT INTO client_pos (id,our_po_no,client_po_ref,client_id,po_date,expected_delivery,payment_terms,currency,gst_treatment,place_of_supply,notes,renewal_date,status,totals_taxable,totals_gst,totals_total,created_at,updated_at)
+      VALUES (@id,@our_po_no,@client_po_ref,@client_id,@po_date,@expected_delivery,@payment_terms,@currency,@gst_treatment,@place_of_supply,@notes,@renewal_date,@status,@tt,@tg,@to,@ts,@ts)`)
+      .run({ id, our_po_no, client_po_ref: b.client_po_ref || null, client_id: b.client_id, po_date: b.po_date, expected_delivery: b.expected_delivery || null, payment_terms: b.payment_terms || null, currency, gst_treatment: b.gst_treatment || 'IGST', place_of_supply: b.place_of_supply || null, notes: b.notes || null, renewal_date, status: issue ? 'Open' : 'Draft', tt: t.taxable, tg: t.gst, to: t.total, ts });
   } catch (e) {
     if (/UNIQUE/.test(e.message)) return res.status(409).json({ error: `PO number "${our_po_no}" already exists.` });
     throw e;
@@ -218,6 +219,7 @@ r.patch('/client-pos/:id', (req, res) => {
     gst_treatment: b.gst_treatment ?? po.gst_treatment,
     place_of_supply: b.place_of_supply ?? po.place_of_supply,
     notes: b.notes ?? po.notes,
+    renewal_date: b.renewal_date ?? po.renewal_date,
   };
   const tx = db.transaction(() => {
     // line items can only be replaced if no invoices reference them
@@ -228,7 +230,7 @@ r.patch('/client-pos/:id', (req, res) => {
     }
     const lines = db.prepare('SELECT * FROM client_po_lines WHERE client_po_id=?').all(po.id);
     const t = sumLines(lines);
-    db.prepare(`UPDATE client_pos SET our_po_no=@our_po_no,client_po_ref=@client_po_ref,po_date=@po_date,expected_delivery=@expected_delivery,payment_terms=@payment_terms,currency=@currency,gst_treatment=@gst_treatment,place_of_supply=@place_of_supply,notes=@notes,totals_taxable=@tt,totals_gst=@tg,totals_total=@to,updated_at=@ts WHERE id=@id`)
+    db.prepare(`UPDATE client_pos SET our_po_no=@our_po_no,client_po_ref=@client_po_ref,po_date=@po_date,expected_delivery=@expected_delivery,payment_terms=@payment_terms,currency=@currency,gst_treatment=@gst_treatment,place_of_supply=@place_of_supply,notes=@notes,renewal_date=@renewal_date,totals_taxable=@tt,totals_gst=@tg,totals_total=@to,updated_at=@ts WHERE id=@id`)
       .run({ id: po.id, ...m, tt: t.taxable, tg: t.gst, to: t.total, ts });
   });
   tx();

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFetch } from '../hooks.js';
 import { api, uploadFile } from '../api.js';
@@ -8,12 +8,16 @@ import { STATES, stateName } from '../states.js';
 import { today  } from '../format.js';
 
 const GST = [['IGST', 'IGST (Inter-state)'], ['CGST_SGST', 'CGST+SGST (Intra-state)'], ['EXPORT', 'Export'], ['EXPORT_LUT', 'Export under LUT'], ['SEZ', 'SEZ']];
+const addMonths = (s, n) => { if (!s) return ''; const [y, m, d] = s.split('-').map(Number); return new Date(Date.UTC(y, (m - 1) + n, d)).toISOString().slice(0, 10); };
 
 export default function ClientPoForm() {
   const nav = useNavigate();
   const { data: clients, reload: reloadClients } = useFetch('/clients?active=1');
   const { data: products } = useFetch('/products');
-  const [form, setForm] = useState({ client_id: '', our_po_no: '', client_po_ref: '', po_date: today(), expected_delivery: '', payment_terms: 'Net 30', gst_treatment: 'IGST', place_of_supply: '', notes: '' });
+  const [form, setForm] = useState({ client_id: '', our_po_no: '', client_po_ref: '', po_date: today(), expected_delivery: '', payment_terms: 'Net 30', gst_treatment: 'IGST', place_of_supply: '', notes: '', renewal_date: addMonths(today(), 9) });
+  const [renewalTouched, setRenewalTouched] = useState(false);
+  // Keep renewal date = PO date + 9 months until the user edits it manually.
+  useEffect(() => { if (!renewalTouched) setForm((f) => ({ ...f, renewal_date: addMonths(f.po_date, 9) })); }, [form.po_date]); // eslint-disable-line
   const [lines, setLines] = useState([{ description: '', hsn_sac: '', qty: 1, rate: 0, gst_pct: 18 }]);
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -90,9 +94,12 @@ export default function ClientPoForm() {
             </FormRow>
           </div>
         )}
-        <FormRow>
+        <FormRow cols={3}>
           <Field label="PO date *"><Input type="date" value={form.po_date} onChange={set('po_date')} /></Field>
           <Field label="Expected delivery"><Input type="date" value={form.expected_delivery} onChange={set('expected_delivery')} /></Field>
+          <Field label="Remind for renewal on">
+            <Input type="date" value={form.renewal_date} onChange={(e) => { setRenewalTouched(true); setForm((f) => ({ ...f, renewal_date: e.target.value })); }} />
+          </Field>
         </FormRow>
         <FormRow>
           <Field label="Payment terms"><Input value={form.payment_terms} onChange={set('payment_terms')} /></Field>

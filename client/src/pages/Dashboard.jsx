@@ -193,6 +193,31 @@ const WIDGETS = [
       </Card>
     );
   } },
+  { id: 'renewals', title: 'POs due for renewal', full: true, render: (d, nav) => {
+    const r = d.renewals || { thisMonth: [], nextMonth: [], later: [], total: 0 };
+    const Section = ({ label, rows, tone }) => (
+      <div className="flex-1 min-w-[200px]">
+        <div className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: tone }}>{label} <span className="text-muted">({rows.length})</span></div>
+        {rows.length === 0 ? <div className="text-[11px] text-muted">—</div> : rows.map((x, i) => (
+          <div key={i} onClick={() => nav('/client-pos')} className="flex items-center justify-between gap-2 py-1 border-b border-line cursor-pointer hover:bg-bg2 text-xs">
+            <span className="truncate"><b>{x.po_no}</b> · {x.client_name}</span>
+            <span className="text-muted whitespace-nowrap">{fmtDate(x.renewal_date)}</span>
+          </div>
+        ))}
+      </div>
+    );
+    return (
+      <Card title={`POs due for renewal · next 3 months (${r.total})`}>
+        {r.total === 0 ? <p className="text-xs text-muted">No client POs due for renewal in the next 3 months.</p> : (
+          <div className="flex gap-6 flex-wrap">
+            <Section label="This month" rows={r.thisMonth} tone="#dc2626" />
+            <Section label="Next month" rows={r.nextMonth} tone="#d97706" />
+            <Section label="In 2–3 months" rows={r.later} tone="#2D4A60" />
+          </div>
+        )}
+      </Card>
+    );
+  } },
   { id: 'kpis', title: 'KPI tiles', full: true, render: (d, nav) => {
     const k = d.kpis;
     return (

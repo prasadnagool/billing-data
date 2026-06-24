@@ -17,7 +17,7 @@ export default function ClientPoEdit() {
   useEffect(() => {
     api.get(`/client-pos/${id}`).then((p) => {
       setPo(p);
-      setForm({ our_po_no: p.our_po_no || '', client_po_ref: p.client_po_ref || '', po_date: p.po_date || '', expected_delivery: p.expected_delivery || '', payment_terms: p.payment_terms || '', gst_treatment: p.gst_treatment || 'IGST', place_of_supply: p.place_of_supply || '', currency: p.currency || 'INR', notes: p.notes || '' });
+      setForm({ our_po_no: p.our_po_no || '', client_po_ref: p.client_po_ref || '', po_date: p.po_date || '', expected_delivery: p.expected_delivery || '', payment_terms: p.payment_terms || '', gst_treatment: p.gst_treatment || 'IGST', place_of_supply: p.place_of_supply || '', currency: p.currency || 'INR', notes: p.notes || '', renewal_date: p.renewal_date || '' });
       setLines(p.lines.map((l) => ({ description: l.description, hsn_sac: l.hsn_sac, qty: l.qty, rate: l.rate, gst_pct: l.gst_pct, note: l.note || '' })));
     }).catch((e) => alert(e.message));
   }, [id]);
@@ -56,6 +56,7 @@ export default function ClientPoEdit() {
         </FormRow>
         <FormRow cols={3}>
           <Field label="Expected delivery"><Input type="date" value={form.expected_delivery} onChange={set('expected_delivery')} /></Field>
+          <Field label="Remind for renewal on"><Input type="date" value={form.renewal_date} onChange={set('renewal_date')} /></Field>
           <Field label="Payment terms"><Input value={form.payment_terms} onChange={set('payment_terms')} /></Field>
           <Field label="GST treatment"><Select value={form.gst_treatment} onChange={set('gst_treatment')}>{GST.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
         </FormRow>

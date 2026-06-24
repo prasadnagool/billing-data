@@ -66,6 +66,9 @@ ensureColumns('clients', [['currency', "TEXT DEFAULT 'INR'"], ['country', "TEXT 
 ensureColumns('clients', [['active', 'INTEGER DEFAULT 1']]);
 ensureColumns('vendors', [['active', 'INTEGER DEFAULT 1']]);
 ensureColumns('client_pos', [['currency', "TEXT DEFAULT 'INR'"]]);
+// Renewal reminder date (default = PO date + 9 months; editable). Drives the
+// "POs due for renewal" dashboard widget.
+ensureColumns('client_pos', [['renewal_date', 'TEXT']]);
 // Uploaded copy of the PO received from the client (PDF/scan).
 ensureColumns('client_pos', [['attachment_filename', 'TEXT'], ['attachment_path', 'TEXT']]);
 ensureColumns('client_invoices', [['currency', "TEXT DEFAULT 'INR'"]]);
@@ -160,6 +163,14 @@ export function nextNumber(series, prefix, { fy = 'ALL', pad = 4, withFy = false
   const num = String(n).padStart(pad, '0');
   if (format) return format(num, fy);
   return withFy ? `${prefix}-${fyShort(fy)}-${num}` : `${prefix}-${num}`;
+}
+
+// Add N months to a YYYY-MM-DD date, returning YYYY-MM-DD (clamps day overflow).
+export function addMonths(dateStr, n) {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const base = new Date(Date.UTC(y, (m - 1) + n, d));
+  return base.toISOString().slice(0, 10);
 }
 
 // Indian financial year label (Apr–Mar) like "26-27" for a date (default today).

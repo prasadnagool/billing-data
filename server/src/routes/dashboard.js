@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db } from '../db.js';
+import { db, addMonths } from '../db.js';
 import { invoiceRollup, vendorInvoiceRollup, vendorInvoiceGrand, arAging, apAging, EXCL_DIS_CLIENT, EXCL_DIS_VENDOR } from '../lib/repo.js';
 
 const r = Router();
@@ -110,8 +110,26 @@ r.get('/dashboard', (req, res) => {
     monthlyEmi: db.prepare(`SELECT COALESCE(SUM(emi),0) t FROM facilities WHERE active=1 AND type='Term Loan'`).get().t,
   };
 
+  // POs due for renewal in the next 3 months, bucketed by this month / next month / later.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const in3 = addMonths(todayStr, 3);
+  const dt = new Date(todayStr + 'T00:00:00Z');
+  const eom = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+  const eonm = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 2, 0)).toISOString().slice(0, 10);
+  const renewalRows = db.prepare(`SELECT cp.our_po_no AS po_no, cp.renewal_date, c.name AS client_name
+    FROM client_pos cp JOIN clients c ON c.id = cp.client_id
+    WHERE cp.status NOT IN ('Cancelled','Draft') AND ${EC} AND cp.renewal_date IS NOT NULL
+    AND cp.renewal_date >= ? AND cp.renewal_date <= ? ORDER BY cp.renewal_date`).all(todayStr, in3);
+  const renewals = { thisMonth: [], nextMonth: [], later: [], total: renewalRows.length };
+  for (const row of renewalRows) {
+    if (row.renewal_date <= eom) renewals.thisMonth.push(row);
+    else if (row.renewal_date <= eonm) renewals.nextMonth.push(row);
+    else renewals.later.push(row);
+  }
+
   res.json({
     kpis: { receivableByCcy, payableByCcy, tdsReceivable, tdsPayable, outstandingReceivable: receivableByCcy.INR || 0, outstandingPayable: payableByCcy.INR || 0 },
+    renewals,
     arAging: ar.buckets, arByCurrency: ar.byCurrency, apAging: ap.buckets, apByCurrency: ap.byCurrency,
     activity, thisWeek, attention, trend, turnover, series, topReceivables, topPayables, treasury, billing, collections,
   });
