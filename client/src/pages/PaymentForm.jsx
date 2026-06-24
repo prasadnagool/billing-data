@@ -47,6 +47,8 @@ export default function PaymentForm() {
   useEffect(() => {
     const invId = sp.get('invoice');
     if (invId && vendors) api.get(`/vendor-invoices/${invId}`).then((inv) => { setForm((f) => ({ ...f, vendor_id: inv.vendor_id })); setAllocs({ [inv.id]: inv.balance / 100 }); });
+    const vid = sp.get('vendor');
+    if (vid) setForm((f) => (f.vendor_id ? f : { ...f, vendor_id: vid }));
   }, [vendors]);
 
   // gross in bill currency (minor units)
