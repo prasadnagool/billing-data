@@ -9,6 +9,8 @@ import { today  } from '../format.js';
 
 const GST = [['IGST', 'IGST (Inter-state)'], ['CGST_SGST', 'CGST+SGST (Intra-state)'], ['EXPORT', 'Export'], ['SEZ', 'SEZ']];
 const TDS_SECTIONS = ['194C', '194J', '194Q', '194I', '194H'];
+// Indian FY label (Apr–Mar), e.g. "26-27".
+const fyLabel = (s) => { const d = s ? new Date(s + 'T00:00:00') : new Date(); const y = d.getFullYear(); const st = d.getMonth() >= 3 ? y : y - 1; return `${String(st).slice(2)}-${String(st + 1).slice(2)}`; };
 
 export default function VendorPoForm() {
   const nav = useNavigate();
@@ -104,7 +106,13 @@ export default function VendorPoForm() {
           <Field label="Required by"><Input type="date" value={form.required_by} onChange={set('required_by')} /></Field>
           <Field label="GST treatment"><Select value={form.gst_treatment} onChange={set('gst_treatment')}>{GST.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
         </FormRow>
-        <FormRow>
+        <FormRow cols={3}>
+          <Field label="PO number">
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted whitespace-nowrap">PO_KG_{fyLabel(form.po_date)}_</span>
+              <Input value={form.po_suffix || ''} onChange={set('po_suffix')} placeholder="XX" style={{ maxWidth: 80 }} />
+            </div>
+          </Field>
           <Field label="Payment terms"><Input value={form.payment_terms} onChange={set('payment_terms')} placeholder="Inherits from vendor master" /></Field>
           <Field label="Ship to"><Input value={form.ship_to} onChange={set('ship_to')} /></Field>
         </FormRow>

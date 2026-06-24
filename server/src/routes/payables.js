@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, uuid, now, nextNumber, logActivity, UPLOAD_DIR } from '../db.js';
+import { db, uuid, now, nextNumber, fyLabel, logActivity, UPLOAD_DIR } from '../db.js';
 import { computeLine, sumLines, computeTds, approvalWorkflow, threeWayMatch } from '../lib/compute.js';
 import {
   enrichVendorPo, enrichVendorInvoice, enrichAdvance, vendorPoRollup, vendorInvoiceRollup, vendorInvoiceGrand, vendorName, disabledVendorIds,
@@ -178,9 +178,22 @@ r.post('/vendor-pos', (req, res) => {
   let status = 'Draft';
   if (b.action === 'approve') status = 'Approved';
   else if (submit) status = wf === 'auto' ? 'Approved' : 'Pending approval';
+  // PO number format PO_KG_<FY>_<XX>. Suffix (XX) is entered by the user; if
+  // blank, the next per-FY sequence is used. Drafts stay unnumbered.
+  let our_po_no = null;
+  if (status !== 'Draft') {
+    const fy = fyLabel(b.po_date);
+    const suffix = b.po_suffix != null ? String(b.po_suffix).trim() : '';
+    if (suffix) {
+      our_po_no = `PO_KG_${fy}_${suffix}`;
+      if (db.prepare('SELECT 1 FROM vendor_pos WHERE our_po_no=?').get(our_po_no)) return res.status(409).json({ error: `PO number "${our_po_no}" already exists.` });
+    } else {
+      our_po_no = nextNumber('vendor_po', 'PO', { fy, pad: 2, format: (num) => `PO_KG_${fy}_${num}` });
+    }
+  }
   db.prepare(`INSERT INTO vendor_pos (id,our_po_no,vendor_id,linked_client_po_id,po_date,required_by,payment_terms,gst_treatment,tds_section,currency,approval_workflow,ship_to,notes,status,totals_taxable,totals_gst,totals_total,created_at,updated_at)
     VALUES (@id,@our_po_no,@vendor_id,@lc,@po_date,@req,@pt,@gst,@tds,@currency,@wf,@ship,@notes,@status,@tt,@tg,@to,@ts,@ts)`)
-    .run({ id, our_po_no: status === 'Draft' ? null : nextNumber('vendor_po', 'PO-VN'), vendor_id: b.vendor_id, lc: b.linked_client_po_id || null, po_date: b.po_date, req: b.required_by || null, pt: b.payment_terms || vendor.payment_terms, gst: b.gst_treatment || 'IGST', tds: b.tds_section || vendor.tds_section, currency: (b.currency || vendor.currency || 'INR').toUpperCase(), wf, ship: b.ship_to || null, notes: b.notes || null, status, tt: t.taxable, tg: t.gst, to: t.total, ts });
+    .run({ id, our_po_no, vendor_id: b.vendor_id, lc: b.linked_client_po_id || null, po_date: b.po_date, req: b.required_by || null, pt: b.payment_terms || vendor.payment_terms, gst: b.gst_treatment || 'IGST', tds: b.tds_section || vendor.tds_section, currency: (b.currency || vendor.currency || 'INR').toUpperCase(), wf, ship: b.ship_to || null, notes: b.notes || null, status, tt: t.taxable, tg: t.gst, to: t.total, ts });
   const ins = db.prepare(`INSERT INTO vendor_po_lines (id,vendor_po_id,client_po_line_id,description,hsn_sac,qty,rate,gst_pct,taxable,gst,total,note,sort_order) VALUES (@id,@vendor_po_id,@client_po_line_id,@description,@hsn_sac,@qty,@rate,@gst_pct,@taxable,@gst,@total,@note,@sort_order)`);
   lines.forEach((l) => ins.run(l));
   const saved = db.prepare('SELECT * FROM vendor_pos WHERE id=?').get(id);
