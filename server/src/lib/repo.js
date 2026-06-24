@@ -38,7 +38,7 @@ export function invoiceRollup(invoiceId, total) {
 }
 
 export function displayInvoiceStatus(inv, balance) {
-  if (inv.status === 'Draft' || inv.status === 'Cancelled' || inv.status === 'Paid') return inv.status;
+  if (inv.status === 'Draft' || inv.status === 'Cancelled' || inv.status === 'Open' || inv.status === 'Paid') return inv.status;
   if (balance <= 0) return 'Paid';
   const overdue = inv.due_date && inv.due_date < TODAY();
   if (balance < inv.totals_total) return overdue ? 'Overdue' : 'Partial';
