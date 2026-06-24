@@ -57,7 +57,7 @@ export default function Clients() {
         sub="All clients you receive POs from"
         actions={<>
           <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onImport} />
-          <button className="btn" onClick={doExport} disabled={!(data || []).length}>Export CSV</button>
+          <button className="btn" onClick={doExport} disabled={!rows.length}>Export CSV</button>
           {canEdit('clients') && <button className="btn" onClick={() => fileRef.current?.click()}>Import CSV</button>}
           {canEdit('clients') && <button className="btn btn-primary" onClick={() => nav('/clients/new')}>+ Add client</button>}
         </>}
