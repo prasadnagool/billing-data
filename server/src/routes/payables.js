@@ -394,6 +394,19 @@ r.get('/vendor-invoices/:id/attachment', (req, res) => {
   res.sendFile(path.resolve(inv.attachment_path));
 });
 
+// Delete a vendor invoice (also removes payment allocations)
+r.delete('/vendor-invoices/:id', (req, res) => {
+  const inv = db.prepare('SELECT * FROM vendor_invoices WHERE id=?').get(req.params.id);
+  if (!inv) return res.status(404).json({ error: 'Not found' });
+  if (inv.attachment_path && fs.existsSync(inv.attachment_path)) fs.unlink(inv.attachment_path, () => {});
+  db.prepare('DELETE FROM payment_allocations WHERE vendor_invoice_id=?').run(inv.id);
+  db.prepare('DELETE FROM vendor_invoice_lines WHERE vendor_invoice_id=?').run(inv.id);
+  db.prepare('DELETE FROM vendor_invoice_links WHERE vendor_invoice_id=?').run(inv.id);
+  db.prepare('DELETE FROM vendor_invoices WHERE id=?').run(inv.id);
+  logActivity({ kind: 'vendor_invoice_deleted', entity: 'vendor_invoices', entity_id: inv.id, ref: inv.vendor_invoice_no, party: vendorName(inv.vendor_id), amount: inv.totals_total, description: 'Vendor invoice deleted' });
+  res.json({ ok: true });
+});
+
 // ============================= VENDOR PAYMENTS ===============================
 r.get('/vendor-payments', (req, res) => {
   const rows = db.prepare('SELECT * FROM vendor_payments ORDER BY date DESC').all().map((p) => {

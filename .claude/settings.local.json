@@ -71,7 +71,12 @@
       "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s http://localhost:4000/api/client-pos 2>&1 | jq .[0] 2>/dev/null | head -20')",
       "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s http://localhost:4000/api/client-pos 2>&1 | head -30')",
       "Bash(git commit -m 'Fix all forms to use paginated clients endpoint *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'sqlite3 /opt/billingdata/server/data/app.db \"SELECT id, vendor_invoice_no FROM vendor_invoices WHERE vendor_invoice_no LIKE \\\\\"%23944%\\\\\";\"')",
+      "Bash(curl -s -X DELETE http://localhost:4000/api/vendor-invoices/032f6cc6-9fb3-4126-aecd-13bc2c12f7d8)",
+      "Bash(curl -s -X DELETE http://localhost:4000/api/vendor-invoices/b25ccb3c-754d-4561-934d-63e187723b92)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s -X DELETE http://localhost:4000/api/vendor-invoices/032f6cc6-9fb3-4126-aecd-13bc2c12f7d8 && echo && curl -s -X DELETE http://localhost:4000/api/vendor-invoices/b25ccb3c-754d-4561-934d-63e187723b92')",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=25 root@27.100.38.230 'curl -s -X DELETE http://localhost:4000/api/vendor-invoices/032f6cc6-9fb3-4126-aecd-13bc2c12f7d8 && echo \"Deleted\"')"
     ]
   }
 }
