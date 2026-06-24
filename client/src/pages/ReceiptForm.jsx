@@ -15,8 +15,13 @@ export default function ReceiptForm() {
   // Bank accounts money can be received into = Treasury OD / Current facilities.
   const banks = (facilities || []).filter((f) => (f.type === 'OD' || f.type === 'Current') && f.active !== 0);
   const [form, setForm] = useState({ client_id: '', date: today(), mode: 'NEFT', bank_account: '', utr: '', gross: 0, tds: 0, charges: 0, tds_section: '' });
-  // Default to the first account once facilities load.
-  useEffect(() => { if (banks.length && !form.bank_account) setForm((f) => ({ ...f, bank_account: banks[0].name })); }, [banks.length]); // eslint-disable-line
+  // Default to the IDFC OD account if present, else the first account.
+  useEffect(() => {
+    if (banks.length && !form.bank_account) {
+      const pref = banks.find((b) => /idfc/i.test(b.name) && b.type === 'OD') || banks.find((b) => /idfc/i.test(b.name)) || banks[0];
+      setForm((f) => ({ ...f, bank_account: pref.name }));
+    }
+  }, [banks.length]); // eslint-disable-line
   const [openInvoices, setOpenInvoices] = useState([]);
   const [allocs, setAllocs] = useState({});
   const [fxRate, setFxRate] = useState('');
