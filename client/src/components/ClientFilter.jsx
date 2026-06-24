@@ -4,9 +4,9 @@ import { useFetch } from '../hooks.js';
 // Searchable client picker (type a name → selects that client's id).
 // value = selected client id (''=all); onChange(id).
 export default function ClientFilter({ value, onChange, label = 'Client' }) {
-  const { data: clients } = useFetch('/clients');
+  const { data } = useFetch('/clients?page=1&limit=1000&search=');
   const [text, setText] = useState('');
-  const list = clients || [];
+  const list = data?.clients || [];
 
   const onText = (v) => {
     setText(v);
