@@ -22,6 +22,8 @@ export default function Treasury() {
   const credit = facilities.filter((f) => f.type === 'OD' || f.type === 'CC');
   const loans = facilities.filter((f) => f.type === 'Term Loan');
   const current = facilities.filter((f) => f.type === 'Current');
+  // Most recent date any facility balance was updated (YYYY-MM-DD sorts lexically).
+  const lastUpdated = facilities.map((f) => f.balance_updated_at).filter(Boolean).sort().slice(-1)[0];
 
   return (
     <div>
@@ -96,7 +98,7 @@ export default function Treasury() {
               { header: 'Next due', render: (f) => f.next_due ? fmtDate(f.next_due) : '—' },
               { header: 'Months left', num: true, render: (f) => f.tenure_left || '—' },
             ]} />
-            <p className="text-[11px] text-muted mt-2">Record EMI payments from the <button className="tlink" onClick={() => nav('/treasury/update')}>Update balances</button> screen.</p>
+            <p className="text-[11px] text-muted mt-2">Record EMI payments from the <button className="tlink" onClick={() => nav('/treasury/update')}>Update balances</button> screen.{lastUpdated && <span className="ml-2">* Balances last updated {fmtDate(lastUpdated)}</span>}</p>
           </Card>
         )}
       </>}
