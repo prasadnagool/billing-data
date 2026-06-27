@@ -9,6 +9,8 @@ export default function AdminBackups() {
   const [busy, setBusy] = useState('');
   const [serverBackups, setServerBackups] = useState([]);
   const [picked, setPicked] = useState('');
+  const [validating, setValidating] = useState(null);
+  const [validateResult, setValidateResult] = useState(null);
   const fileRef = useRef(null);
 
   const loadServerBackups = useCallback(async () => {
@@ -76,6 +78,22 @@ export default function AdminBackups() {
     if (!window.confirm(`Delete server backup "${name}"? This only removes the backup file, not your live data.`)) return;
     try { await api.delete(`/admin/backups/${encodeURIComponent(name)}`); if (picked === name) setPicked(''); await loadServerBackups(); }
     catch (e) { alert('Delete failed: ' + e.message); }
+  };
+
+  const handleValidate = async (name) => {
+    setValidating(name);
+    setValidateResult(null);
+    try {
+      const isFull = name.endsWith('.tar.gz') || name.endsWith('.tgz');
+      const endpoint = isFull
+        ? `/admin/backup/validate-full/${encodeURIComponent(name)}`
+        : `/admin/backup/validate/${encodeURIComponent(name)}`;
+      const result = await api.post(endpoint, {});
+      setValidateResult({ ...result, _type: isFull ? 'full' : 'data' });
+    } catch (e) {
+      setValidateResult({ ok: false, integrity: false, detail: e.message, tables: [], _type: 'data' });
+    }
+    setValidating(null);
   };
 
   const clearData = async (keepTreasury) => {
@@ -151,6 +169,9 @@ export default function AdminBackups() {
                   <div className="font-mono text-xs truncate">{b.name}</div>
                   <div className="text-[11px] text-muted">{fmtWhen(b.created_at)} · {fmtSize(b.size)}</div>
                 </div>
+                <button className="tlink" disabled={validating === b.name} onClick={() => handleValidate(b.name)}>
+                  {validating === b.name ? 'Validating…' : '✓ Validate'}
+                </button>
                 <button className="tlink" onClick={() => downloadAuthed(`/admin/backups/download/${encodeURIComponent(b.name)}`, b.name)}>Download</button>
                 <button className="text-danger font-semibold cursor-pointer hover:underline" onClick={() => deleteServerBackup(b.name)}>Delete</button>
               </div>
@@ -166,6 +187,75 @@ export default function AdminBackups() {
           <button className="btn text-danger border-danger/50" disabled={busy === 'clear'} onClick={() => clearData(false)}>Clear all data</button>
         </div>
       </Card>
+
+      {/* Validation Result Modal */}
+      {validateResult && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, padding: '16px'
+        }} onClick={() => setValidateResult(null)}>
+          <div style={{
+            background: 'var(--bg-surface)', borderRadius: '12px', padding: '28px',
+            maxWidth: '500px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,.3)',
+            border: '1px solid var(--border-subtle)', maxHeight: '80vh', overflowY: 'auto'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {validateResult.ok ? '✅ Validation Passed' : '❌ Validation Failed'}
+            </h3>
+
+            <div style={{
+              background: validateResult.ok ? 'var(--action-bg)' : '#fee2e2',
+              border: `1px solid ${validateResult.ok ? '#86efac' : '#fca5a5'}`,
+              borderRadius: '8px', padding: '12px', marginBottom: '16px', fontSize: '13px',
+              color: validateResult.ok ? '#0B6623' : '#b91c1c'
+            }}>
+              {validateResult.detail}
+            </div>
+
+            {validateResult._type === 'data' && validateResult.tables && validateResult.tables.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '.5px' }}>
+                  Row counts (vs live database)
+                </div>
+                <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <th style={{ textAlign: 'left', padding: '6px 0', fontWeight: 700 }}>Table</th>
+                      <th style={{ textAlign: 'right', padding: '6px 0', fontWeight: 700 }}>Backup</th>
+                      <th style={{ textAlign: 'right', padding: '6px 0', fontWeight: 700 }}>Live</th>
+                      <th style={{ textAlign: 'right', padding: '6px 0', fontWeight: 700 }}>Newer</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {validateResult.tables.map((t) => (
+                      <tr key={t.name} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                        <td style={{ padding: '6px 0', fontFamily: 'monospace', fontSize: '11px' }}>{t.name}</td>
+                        <td style={{ textAlign: 'right', padding: '6px 0' }}>{t.backup_count}</td>
+                        <td style={{ textAlign: 'right', padding: '6px 0' }}>{t.live_count}</td>
+                        <td style={{ textAlign: 'right', padding: '6px 0', color: t.newer_in_live > 0 ? '#f59e0b' : 'inherit' }}>
+                          {t.newer_in_live > 0 ? `+${t.newer_in_live}` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                  Note: Newer rows in live DB are normal for older backups. This is not an error.
+                </p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setValidateResult(null)} style={{
+                flex: 1, padding: '10px 16px', borderRadius: '6px', border: '1.5px solid var(--border-subtle)',
+                background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600,
+                cursor: 'pointer'
+              }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -163,6 +163,93 @@ router.post('/admin/restore-from-server', requireSuperAdmin, (req, res) => {
   }
 });
 
+// Validate a .db backup (data backup)
+router.post('/admin/backup/validate/:filename', requireSuperAdmin, (req, res) => {
+  const p = backupPath(req.params.filename);
+  if (!p || !fs.existsSync(p)) return res.status(404).json({ ok: false, integrity: false, detail: 'Backup not found' });
+  if (!p.endsWith('.db')) return res.status(400).json({ ok: false, integrity: false, detail: 'Not a .db backup file' });
+
+  const tmpPath = path.join(os.tmpdir(), `validate-${randomUUID()}.db`);
+  try {
+    // Copy backup to temp location for validation
+    fs.copyFileSync(p, tmpPath);
+
+    // Validate with PRAGMA integrity_check
+    const t = new Database(tmpPath, { readonly: true });
+    const result = t.prepare("PRAGMA integrity_check").all();
+    t.close();
+
+    const ok = result.length === 1 && result[0].integrity_check === 'ok';
+    const detail = ok ? 'Database integrity OK' : `Integrity check failed: ${result.map(r => r.integrity_check).join(', ')}`;
+
+    // Compare row counts for key tables
+    const KEY_TABLES = ['client_pos', 'client_invoices', 'vendor_pos', 'vendor_invoices', 'receipts', 'vendor_payments'];
+    const backupDb = new Database(tmpPath, { readonly: true });
+    const liveDb = new Database(path.join(__dirname, '..', '..', 'data', 'app.db'), { readonly: true });
+
+    const tables = [];
+    for (const tbl of KEY_TABLES) {
+      try {
+        const backupCount = backupDb.prepare(`SELECT COUNT(*) as c FROM ${tbl}`).get().c;
+        const liveCount = liveDb.prepare(`SELECT COUNT(*) as c FROM ${tbl}`).get().c;
+        const diff = liveCount - backupCount;
+        tables.push({ name: tbl, backup_count: backupCount, live_count: liveCount, newer_in_live: diff > 0 ? diff : 0 });
+      } catch {}
+    }
+
+    backupDb.close();
+    liveDb.close();
+
+    res.json({ ok, integrity: ok, detail, tables });
+  } catch (e) {
+    res.status(500).json({ ok: false, integrity: false, detail: e.message });
+  } finally {
+    try { fs.unlinkSync(tmpPath); } catch {}
+  }
+});
+
+// Validate a .tar.gz backup (full application backup)
+router.post('/admin/backup/validate-full/:filename', requireSuperAdmin, (req, res) => {
+  const p = backupPath(req.params.filename);
+  if (!p || !fs.existsSync(p)) return res.status(404).json({ ok: false, integrity: false, detail: 'Backup not found' });
+  if (!p.endsWith('.tar.gz') && !p.endsWith('.tgz')) return res.status(400).json({ ok: false, integrity: false, detail: 'Not a .tar.gz backup file' });
+
+  try {
+    // Check tar integrity
+    const { execSync } = require('node:child_process');
+    const tarCheck = execSync(`tar -tzf "${p}" >/dev/null 2>&1 && echo "ok" || echo "fail"`).toString().trim();
+    const tarOk = tarCheck === 'ok';
+    if (!tarOk) return res.json({ ok: false, integrity: false, detail: 'Archive is corrupted or unreadable' });
+
+    // Extract and validate kgreen.db from archive
+    const tmpDir = path.join(os.tmpdir(), `backup-${randomUUID()}`);
+    const dbPath = path.join(tmpDir, 'kgreen.db');
+
+    try {
+      fs.mkdirSync(tmpDir, { recursive: true });
+      execSync(`tar -xzf "${p}" -C "${tmpDir}" server/data/app.db --strip-components=2`);
+
+      if (!fs.existsSync(dbPath)) {
+        return res.json({ ok: false, integrity: false, detail: 'Database file not found in archive' });
+      }
+
+      // Validate the extracted database
+      const t = new Database(dbPath, { readonly: true });
+      const result = t.prepare("PRAGMA integrity_check").all();
+      t.close();
+
+      const ok = result.length === 1 && result[0].integrity_check === 'ok';
+      const detail = ok ? 'Archive integrity and database OK' : `Database integrity check failed: ${result.map(r => r.integrity_check).join(', ')}`;
+
+      res.json({ ok, integrity: ok, detail });
+    } finally {
+      try { fs.rmSync(tmpDir, { recursive: true }); } catch {}
+    }
+  } catch (e) {
+    res.status(500).json({ ok: false, integrity: false, detail: e.message });
+  }
+});
+
 // Wipe ALL business data (manager only). Keeps the schema, the access-control
 // tables (roles, app_users) and re-establishes essential settings + the
 // 'seeded' flag so demo data does NOT come back. Numbering restarts at 1.
