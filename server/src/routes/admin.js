@@ -221,16 +221,21 @@ router.post('/admin/backup/validate-full/:filename', requireSuperAdmin, (req, re
     const tarOk = tarCheck === 'ok';
     if (!tarOk) return res.json({ ok: false, integrity: false, detail: 'Archive is corrupted or unreadable' });
 
-    // Extract and validate kgreen.db from archive
+    // Extract and validate app.db from archive
     const tmpDir = path.join(os.tmpdir(), `backup-${randomUUID()}`);
-    const dbPath = path.join(tmpDir, 'kgreen.db');
+    const dbPath = path.join(tmpDir, 'app.db');
 
     try {
       fs.mkdirSync(tmpDir, { recursive: true });
-      execSync(`tar -xzf "${p}" -C "${tmpDir}" server/data/app.db --strip-components=2`);
+      // Extract server/data/app.db and strip 2 components (server/data) to get app.db in tmpDir
+      try {
+        execSync(`tar -xzf "${p}" -C "${tmpDir}" server/data/app.db --strip-components=2 2>&1`);
+      } catch (e) {
+        return res.json({ ok: false, integrity: false, detail: `DB extraction failed: ${e.message}` });
+      }
 
       if (!fs.existsSync(dbPath)) {
-        return res.json({ ok: false, integrity: false, detail: 'Database file not found in archive' });
+        return res.json({ ok: false, integrity: false, detail: `Database file not found at ${dbPath}. Archive may have different structure.` });
       }
 
       // Validate the extracted database
