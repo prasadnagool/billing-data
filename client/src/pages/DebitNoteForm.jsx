@@ -34,7 +34,29 @@ export default function DebitNoteForm() {
 
   return (
     <div>
-      <PageHeader title="New Debit Note" sub="Issue a debit note to a vendor to reduce a vendor invoice" />
+      <PageHeader
+        title="New Debit Note"
+        sub="Issue a debit note to a vendor to reduce a vendor invoice"
+        actions={
+          <div className="flex gap-2">
+            <button
+              onClick={() => nav('/debit-notes')}
+              title="Close"
+              style={{ background: '#f1f5f9', border: '1.5px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: '#64748b', padding: '6px 10px', margin: '0' }}
+            >
+              ✕
+            </button>
+            <button
+              onClick={() => submit('issue')}
+              disabled={busy}
+              title="Issue & send"
+              style={{ background: busy ? '#f1f5f9' : '#dcfce7', border: `1.5px solid ${busy ? '#e2e8f0' : '#86efac'}`, borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: busy ? '#cbd5e1' : '#0B6623', padding: '6px 10px', margin: '0', opacity: busy ? 0.6 : 1 }}
+            >
+              ✓
+            </button>
+          </div>
+        }
+      />
       <Card title="Debit note">
         <FormRow>
           <Field label="Vendor *">
@@ -62,11 +84,6 @@ export default function DebitNoteForm() {
         </FormRow>
         <Field label="Reason details"><Textarea rows={2} value={form.reason_details} onChange={set('reason_details')} /></Field>
       </Card>
-      <div className="flex gap-2 justify-end">
-        <button className="btn" onClick={() => nav('/debit-notes')}>Cancel</button>
-        <button className="btn" disabled={busy} onClick={() => submit('draft')}>Save draft</button>
-        <button className="btn btn-primary" disabled={busy} onClick={() => submit('issue')}>Issue &amp; send</button>
-      </div>
     </div>
   );
 }

@@ -82,7 +82,29 @@ export default function ReceiptForm() {
 
   return (
     <div>
-      <PageHeader title="Record Client Receipt" sub={foreign ? `Foreign-currency invoice (${currency}) — received in INR at the day's exchange rate` : 'Capture money received and any TDS deducted by the client'} />
+      <PageHeader
+        title="Record Client Receipt"
+        sub={foreign ? `Foreign-currency invoice (${currency}) — received in INR at the day's exchange rate` : 'Capture money received and any TDS deducted by the client'}
+        actions={
+          <div className="flex gap-2">
+            <button
+              onClick={() => nav('/client-payments')}
+              title="Close"
+              style={{ background: '#f1f5f9', border: '1.5px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: '#64748b', padding: '6px 10px', margin: '0' }}
+            >
+              ✕
+            </button>
+            <button
+              onClick={submit}
+              disabled={busy}
+              title="Save receipt"
+              style={{ background: busy ? '#f1f5f9' : '#dcfce7', border: `1.5px solid ${busy ? '#e2e8f0' : '#86efac'}`, borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: busy ? '#cbd5e1' : '#0B6623', padding: '6px 10px', margin: '0', opacity: busy ? 0.6 : 1 }}
+            >
+              ✓
+            </button>
+          </div>
+        }
+      />
       <Card title="Receipt">
         <FormRow>
           <Field label="Client *">
@@ -117,9 +139,21 @@ export default function ReceiptForm() {
       </Card>
 
       <Card title={`Allocate to invoices${foreign ? ` (${currency})` : ''}`}>
+        {form.tds > 0 && (
+          <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+            <strong>TDS Deduction:</strong> When TDS is deducted, allocate the <strong>full invoice balance</strong> (gross + TDS = {fmtCur(form.gross + form.tds, currency)}) to fully clear the invoice. The client's TDS will be credited against their tax liability.
+          </div>
+        )}
         {openInvoices.length > 0 && (
           <Field label="Pick an invoice to link (applies its full balance — editable below)" className="mb-3">
-            <Select value="" onChange={(e) => { const inv = openInvoices.find((i) => i.id === e.target.value); if (!inv) return; setAllocs((a) => ({ ...a, [inv.id]: inv.balance / 100 })); if (!form.gross) setForm((f) => ({ ...f, gross: inv.balance })); }}>
+            <Select value="" onChange={(e) => {
+              const inv = openInvoices.find((i) => i.id === e.target.value);
+              if (!inv) return;
+              // If receipt has TDS, suggest allocating the full invoice balance
+              const suggestedAlloc = form.tds > 0 ? inv.balance : inv.balance;
+              setAllocs((a) => ({ ...a, [inv.id]: suggestedAlloc / 100 }));
+              if (!form.gross) setForm((f) => ({ ...f, gross: inv.balance }));
+            }}>
               <option value="">— Select invoice —</option>
               {openInvoices.map((i) => <option key={i.id} value={i.id} disabled={!!allocs[i.id]}>{i.invoice_no} · {i.po_no} · {fmtCur(i.balance, currency)}{allocs[i.id] ? ' (linked)' : ''}</option>)}
             </Select>
@@ -129,25 +163,28 @@ export default function ReceiptForm() {
           <p className="text-muted text-xs">No open invoices for this client. The receipt will be saved as unallocated.</p>
         ) : (
           <table className="w-full text-xs">
-            <thead><tr><th className="th">Invoice</th><th className="th text-right">Balance</th><th className="th text-right w-40">Apply ({sym.trim()})</th></tr></thead>
+            <thead><tr><th className="th">Invoice</th><th className="th text-right">Balance</th><th className="th text-right w-40">Apply ({sym.trim()})</th><th className="th text-right text-[10px]">✓ if = Balance</th></tr></thead>
             <tbody>
-              {openInvoices.map((inv) => (
-                <tr key={inv.id}>
-                  <td className="td">{inv.invoice_no} <span className="text-muted">({inv.po_no})</span></td>
-                  <td className="td text-right">{fmtCur(inv.balance, currency)}</td>
-                  <td className="td text-right"><input className="field text-right" type="number" value={allocs[inv.id] || ''} onChange={(e) => setAllocs({ ...allocs, [inv.id]: e.target.value })} /></td>
-                </tr>
-              ))}
+              {openInvoices.map((inv) => {
+                const allocVal = Number(allocs[inv.id]) || 0;
+                const isFullyAllocated = Math.abs(allocVal - inv.balance / 100) < 0.01;
+                return (
+                  <tr key={inv.id} style={isFullyAllocated ? { background: 'var(--c-primary-soft)' } : {}}>
+                    <td className="td">{inv.invoice_no} <span className="text-muted">({inv.po_no})</span></td>
+                    <td className="td text-right">{fmtCur(inv.balance, currency)}</td>
+                    <td className="td text-right"><input className="field text-right" type="number" value={allocs[inv.id] || ''} onChange={(e) => setAllocs({ ...allocs, [inv.id]: e.target.value })} /></td>
+                    <td className="td text-center">{isFullyAllocated ? '✓' : '—'}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
-        <div className="text-xs text-muted mt-2">Allocated: <b className="text-ink">{fmtCur(allocTotal, currency)}</b> of gross {fmtCur(form.gross, currency)}</div>
+        <div className="text-xs text-muted mt-2">
+          Allocated: <b className="text-ink">{fmtCur(allocTotal, currency)}</b>
+          {form.tds > 0 && <> · Receipt available: {fmtCur(form.gross + form.tds, currency)} (gross {fmtCur(form.gross, currency)} + TDS {fmtCur(form.tds, currency)})</>}
+        </div>
       </Card>
-
-      <div className="flex gap-2 justify-end">
-        <button className="btn" onClick={() => nav('/client-payments')}>Cancel</button>
-        <button className="btn btn-primary" disabled={busy} onClick={submit}>Save receipt</button>
-      </div>
     </div>
   );
 }

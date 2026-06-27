@@ -16,11 +16,24 @@ export default function VendorPoForm() {
   const nav = useNavigate();
   const { data: vendors, reload: reloadVendors } = useFetch('/vendors?active=1');
   const { data: clientPos } = useFetch('/client-pos');
-  const [form, setForm] = useState({ vendor_id: '', linked_client_po_id: '', po_date: today(), required_by: '', payment_terms: '', gst_treatment: 'IGST', ship_to: 'Main warehouse' });
+  const { data: allPos } = useFetch('/vendor-pos');
+  const [form, setForm] = useState({ vendor_id: '', linked_client_po_id: '', po_date: today(), required_by: '', payment_terms: '', gst_treatment: 'IGST', ship_to: 'Main warehouse', terms_conditions: '' });
   const [lines, setLines] = useState([{ description: '', hsn_sac: '', qty: 1, rate: 0, gst_pct: 18 }]);
   const [products, setProducts] = useState([]);
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  // Calculate last PO number and suggest next one
+  const currentFY = fyLabel(form.po_date);
+  const lastPoNum = (allPos || [])
+    .filter((po) => po.our_po_no && po.our_po_no.includes(`PO_KG_${currentFY}_`))
+    .map((po) => {
+      const match = po.our_po_no.match(/_([A-Z0-9]+)$/);
+      return match ? match[1] : '00';
+    })
+    .sort()
+    .pop() || '00';
+  const suggestedPoSuffix = String(parseInt(lastPoNum, 36) + 1).toUpperCase().padStart(2, '0');
 
   // Load the selected vendor's product catalogue for quick line entry.
   useEffect(() => {
@@ -61,7 +74,29 @@ export default function VendorPoForm() {
 
   return (
     <div>
-      <PageHeader title="New Vendor PO" sub="Issue a PO to a vendor; optionally link to a client PO" />
+      <PageHeader
+        title="New Vendor PO"
+        sub="Issue a PO to a vendor; optionally link to a client PO"
+        actions={
+          <div className="flex gap-2">
+            <button
+              onClick={() => nav('/vendor-pos')}
+              title="Close"
+              style={{ background: '#f1f5f9', border: '1.5px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: '#64748b', padding: '6px 10px', margin: '0' }}
+            >
+              ✕
+            </button>
+            <button
+              onClick={() => submit('approve')}
+              disabled={busy}
+              title="Approve & send"
+              style={{ background: busy ? '#f1f5f9' : '#dcfce7', border: `1.5px solid ${busy ? '#e2e8f0' : '#86efac'}`, borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: busy ? '#cbd5e1' : '#0B6623', padding: '6px 10px', margin: '0', opacity: busy ? 0.6 : 1 }}
+            >
+              ✓
+            </button>
+          </div>
+        }
+      />
       <Card title="PO details">
         <FormRow>
           <Field label="Vendor *">
@@ -109,8 +144,13 @@ export default function VendorPoForm() {
         <FormRow cols={3}>
           <Field label="PO number">
             <div className="flex items-center gap-1">
-              <span className="text-xs text-muted whitespace-nowrap">PO_KG_{fyLabel(form.po_date)}_</span>
-              <Input value={form.po_suffix || ''} onChange={set('po_suffix')} placeholder="XX" style={{ maxWidth: 80 }} />
+              <span className="text-xs text-muted whitespace-nowrap">PO_KG_{currentFY}_</span>
+              <Input value={form.po_suffix || ''} onChange={set('po_suffix')} placeholder={suggestedPoSuffix} style={{ maxWidth: 80 }} />
+              {lastPoNum !== '00' && (
+                <span className="text-xs text-muted whitespace-nowrap">
+                  (last: {lastPoNum}, <button type="button" className="text-primary font-semibold hover:underline" onClick={() => setForm(f => ({ ...f, po_suffix: suggestedPoSuffix }))}>suggest {suggestedPoSuffix}</button>)
+                </span>
+              )}
             </div>
           </Field>
           <Field label="Payment terms"><Input value={form.payment_terms} onChange={set('payment_terms')} placeholder="Inherits from vendor master" /></Field>
@@ -129,6 +169,27 @@ export default function VendorPoForm() {
         )}
         <LineItemsGrid lines={lines} onChange={setLines} currency={currency} />
       </Card>
+
+      <Card title="Terms and Conditions (printed at bottom of PO)">
+        <Field label="Terms & Conditions (max 100 words)">
+          <textarea
+            className="field"
+            rows={5}
+            value={form.terms_conditions || ''}
+            onChange={(e) => {
+              const text = e.target.value;
+              const wordCount = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+              if (wordCount <= 100) setForm({ ...form, terms_conditions: text });
+            }}
+            placeholder="Enter payment terms, delivery conditions, warranty, return policy, etc. (max 100 words)"
+            style={{ resize: 'vertical', fontFamily: 'monospace' }}
+          />
+        </Field>
+        <div className="text-[11px] text-muted mt-1">
+          {form.terms_conditions ? (form.terms_conditions.trim().split(/\s+/).filter(w => w.length > 0).length) : 0} / 100 words
+        </div>
+      </Card>
+
       <p className="text-[11px] text-muted mb-3">Approval band is set automatically by PO value: ≤ ₹5L auto · ≤ ₹25L manager · &gt; ₹25L director.</p>
       <div className="flex gap-2 justify-end">
         <button className="btn" onClick={() => nav('/vendor-pos')}>Cancel</button>

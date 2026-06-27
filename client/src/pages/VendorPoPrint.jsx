@@ -161,6 +161,14 @@ export default function VendorPoPrint() {
           </div>
         </div>
 
+        {/* Terms and Conditions */}
+        {po.terms_conditions && (
+          <div className="mt-6 pt-4 border-t-2 border-line">
+            <div className="font-bold text-[11px] uppercase tracking-wide mb-3" style={{ color: '#2b475c' }}>Terms and Conditions</div>
+            <div className="text-[9.5px] leading-relaxed whitespace-pre-wrap" style={{ lineHeight: '1.6' }}>{po.terms_conditions}</div>
+          </div>
+        )}
+
         <div className="mt-6 text-[9px] text-muted leading-relaxed border-t border-line pt-2">
           <p>This Purchase Order is subject to {COMPANY.shortName}'s standard terms. Please acknowledge acceptance and quote the PO number on all invoices and correspondence. Goods/services must match the description, quantity and rate above. Delivery as per the date stated; any deviation requires written approval.</p>
           <p className="mt-1">{COMPANY.gstin && `GSTIN: ${COMPANY.gstin} · `}{COMPANY.udyam}</p>

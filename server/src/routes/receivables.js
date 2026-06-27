@@ -281,11 +281,15 @@ r.post('/client-invoices', (req, res) => {
   const lines = (b.lines || []).map((l, i) => ({ ...computeLine(l), id: uuid(), client_invoice_id: id, po_line_id: l.po_line_id || null, note: l.note ?? null, sort_order: i }));
   if (!lines.length) return res.status(400).json({ error: 'At least one line required' });
   const t = sumLines(lines);
-  // Guard: invoice amount (without tax) must not exceed the PO's remaining balance.
+  // Guard: invoice amount (with tax) must not exceed the PO's remaining balance.
   const { invoiced } = clientPoRollup(po.id);
   const poBalance = Math.max(0, po.totals_total - invoiced);
-  if (t.taxable > poBalance) {
-    return res.status(409).json({ error: `Invoice amount without tax (${(t.taxable / 100).toFixed(2)}) exceeds the PO balance (${(poBalance / 100).toFixed(2)}).` });
+  if (t.total > poBalance) {
+    return res.status(409).json({ error: `Invoice amount (${(t.total / 100).toFixed(2)}) exceeds the PO balance (${(poBalance / 100).toFixed(2)}).` });
+  }
+  // Safety check: also prevent invoicing more than the PO total (catches edge cases).
+  if (invoiced + t.total > po.totals_total) {
+    return res.status(409).json({ error: `Invoice + prior invoices (${((invoiced + t.total) / 100).toFixed(2)}) exceeds PO total (${(po.totals_total / 100).toFixed(2)}).` });
   }
   const issue = b.action !== 'draft';
   // Number format INV/KG/<FY>/<suffix>. <FY> is the super-admin-controlled
@@ -349,18 +353,38 @@ r.delete('/client-invoices/:id', requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// Update client invoice status
-r.patch('/client-invoices/:id', (req, res) => {
+// Cancel client invoice (only allowed in Draft or if no receipts yet)
+r.patch('/client-invoices/:id/cancel', requireManager, (req, res) => {
   try {
     const inv = db.prepare('SELECT * FROM client_invoices WHERE id=?').get(req.params.id);
     if (!inv) return res.status(404).json({ error: 'Not found' });
-    const status = req.body.status;
-    if (!status) return res.status(400).json({ error: 'Status required' });
+
+    // Check if invoice has any receipts
+    const hasReceipts = db.prepare('SELECT 1 FROM receipt_allocations WHERE invoice_id=? LIMIT 1').get(inv.id);
+    if (hasReceipts) {
+      return res.status(409).json({
+        error: 'Cannot cancel invoice with receipts. Create a credit note instead.',
+      });
+    }
+
     const ts = now();
-    db.prepare('UPDATE client_invoices SET status=?, updated_at=? WHERE id=?').run(status, ts, inv.id);
+    db.prepare('UPDATE client_invoices SET status=?, updated_at=? WHERE id=?').run('Cancelled', ts, inv.id);
+
+    // Update PO status back to Open if this was the only invoice
+    const po = db.prepare('SELECT * FROM client_pos WHERE id=?').get(inv.client_po_id);
+    if (po) {
+      const invoiced = db.prepare('SELECT COALESCE(SUM(ci.totals_total),0) as total FROM client_invoices ci WHERE ci.client_po_id=? AND ci.status != ?').get(po.id, 'Cancelled').total || 0;
+      let newStatus = 'Open';
+      if (invoiced >= po.totals_total) newStatus = 'Fully invoiced';
+      else if (invoiced > 0) newStatus = 'Partial';
+      db.prepare('UPDATE client_pos SET status=?, updated_at=? WHERE id=?').run(newStatus, ts, po.id);
+    }
+
+    logActivity({ kind: 'invoice_cancelled', entity: 'client_invoices', entity_id: inv.id, ref: inv.invoice_no, party: clientName(inv.client_id), amount: inv.totals_total, description: `Invoice cancelled` });
+
     res.json({ ok: true });
   } catch (e) {
-    console.error('PATCH client-invoices error:', e.message);
+    console.error('Cancel invoice error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -412,29 +436,75 @@ r.get('/receipts', (req, res) => {
 });
 
 r.post('/receipts', (req, res) => {
-  const b = req.body; const id = uuid(); const ts = now();
-  // gross/tds/charges/net are in the receipt (bill) currency; INR amount captured at the day's FX.
-  const gross = Math.round(b.gross || 0), tds = Math.round(b.tds || 0), charges = Math.round(b.charges || 0);
-  const net = gross - tds - charges;
-  const currency = (b.currency || 'INR').toUpperCase();
-  const fx_rate = currency === 'INR' ? 1 : (Number(b.fx_rate) || 1);
-  const inr_amount = Math.round(net * fx_rate);
-  const receipt_no = nextNumber('receipt', 'RCT', { withFy: true, pad: 3 });
-  db.prepare(`INSERT INTO receipts (id,receipt_no,client_id,date,mode,bank_account,utr,gross,tds,charges,net,tds_section,tds_cert_status,currency,fx_rate,inr_amount,created_at,updated_at)
-    VALUES (@id,@receipt_no,@client_id,@date,@mode,@bank_account,@utr,@gross,@tds,@charges,@net,@tds_section,@cert,@currency,@fx,@inr,@ts,@ts)`)
-    .run({ id, receipt_no, client_id: b.client_id, date: b.date, mode: b.mode, bank_account: b.bank_account || null, utr: b.utr || null, gross, tds, charges, net, tds_section: b.tds_section || null, cert: 'Pending', currency, fx: fx_rate, inr: inr_amount, ts });
-  const ins = db.prepare('INSERT INTO receipt_allocations (id,receipt_id,invoice_id,applied) VALUES (?,?,?,?)');
-  (b.allocations || []).forEach((a) => { if (a.applied > 0) ins.run(uuid(), id, a.invoice_id, Math.round(a.applied)); });
-  // advance invoice/PO statuses
-  (b.allocations || []).forEach((a) => {
-    const inv = db.prepare('SELECT * FROM client_invoices WHERE id=?').get(a.invoice_id);
-    if (!inv) return;
-    const { balance } = invoiceRollup(inv.id, inv.totals_total);
-    if (balance <= 0) db.prepare('UPDATE client_invoices SET status=?, updated_at=? WHERE id=?').run('Paid', ts, inv.id);
-    else if (inv.status === 'Open') db.prepare('UPDATE client_invoices SET status=?, updated_at=? WHERE id=?').run('Partial', ts, inv.id);
-  });
-  logActivity({ kind: 'receipt', entity: 'receipts', entity_id: id, ref: receipt_no, party: clientName(b.client_id), amount: gross, description: `Payment received via ${b.mode}` });
-  res.status(201).json(db.prepare('SELECT * FROM receipts WHERE id=?').get(id));
+  try {
+    const b = req.body;
+    const id = uuid();
+    const ts = now();
+
+    // gross/tds/charges/net are in the receipt (bill) currency; INR amount captured at the day's FX.
+    const gross = Math.round(b.gross || 0);
+    const tds = Math.round(b.tds || 0);
+    const charges = Math.round(b.charges || 0);
+    const net = gross - tds - charges;
+
+    // VALIDATION: Validate all allocations before inserting receipt
+    let totalAllocated = 0;
+    if (b.allocations && Array.isArray(b.allocations)) {
+      for (const alloc of b.allocations) {
+        if (!alloc.applied || alloc.applied <= 0) continue;
+
+        const appliedAmount = Math.round(alloc.applied);
+        totalAllocated += appliedAmount;
+
+        // Check that allocation doesn't exceed invoice balance
+        const inv = db.prepare('SELECT * FROM client_invoices WHERE id=?').get(alloc.invoice_id);
+        if (!inv) {
+          return res.status(400).json({ error: `Invoice ${alloc.invoice_id} not found` });
+        }
+
+        const { balance } = invoiceRollup(inv.id, inv.totals_total);
+        if (appliedAmount > balance) {
+          return res.status(400).json({
+            error: `Allocation of ${(appliedAmount / 100).toFixed(2)} exceeds invoice balance of ${(balance / 100).toFixed(2)}. Invoice: ${inv.invoice_no}`,
+          });
+        }
+      }
+
+      // Check that total allocations don't exceed receipt net amount
+      if (totalAllocated > net) {
+        return res.status(400).json({
+          error: `Total allocations ${(totalAllocated / 100).toFixed(2)} exceed receipt net amount ${(net / 100).toFixed(2)}`,
+        });
+      }
+    }
+
+    const currency = (b.currency || 'INR').toUpperCase();
+    const fx_rate = currency === 'INR' ? 1 : (Number(b.fx_rate) || 1);
+    const inr_amount = Math.round(net * fx_rate);
+    const receipt_no = nextNumber('receipt', 'RCT', { withFy: true, pad: 3 });
+
+    db.prepare(`INSERT INTO receipts (id,receipt_no,client_id,date,mode,bank_account,utr,gross,tds,charges,net,tds_section,tds_cert_status,currency,fx_rate,inr_amount,created_at,updated_at)
+      VALUES (@id,@receipt_no,@client_id,@date,@mode,@bank_account,@utr,@gross,@tds,@charges,@net,@tds_section,@cert,@currency,@fx,@inr,@ts,@ts)`)
+      .run({ id, receipt_no, client_id: b.client_id, date: b.date, mode: b.mode, bank_account: b.bank_account || null, utr: b.utr || null, gross, tds, charges, net, tds_section: b.tds_section || null, cert: 'Pending', currency, fx: fx_rate, inr: inr_amount, ts });
+
+    const ins = db.prepare('INSERT INTO receipt_allocations (id,receipt_id,invoice_id,applied) VALUES (?,?,?,?)');
+    (b.allocations || []).forEach((a) => { if (a.applied > 0) ins.run(uuid(), id, a.invoice_id, Math.round(a.applied)); });
+
+    // advance invoice/PO statuses
+    (b.allocations || []).forEach((a) => {
+      const inv = db.prepare('SELECT * FROM client_invoices WHERE id=?').get(a.invoice_id);
+      if (!inv) return;
+      const { balance } = invoiceRollup(inv.id, inv.totals_total);
+      if (balance <= 0) db.prepare('UPDATE client_invoices SET status=?, updated_at=? WHERE id=?').run('Paid', ts, inv.id);
+      else if (inv.status === 'Open') db.prepare('UPDATE client_invoices SET status=?, updated_at=? WHERE id=?').run('Partial', ts, inv.id);
+    });
+
+    logActivity({ kind: 'receipt', entity: 'receipts', entity_id: id, ref: receipt_no, party: clientName(b.client_id), amount: gross, description: `Payment received via ${b.mode}` });
+    res.status(201).json(db.prepare('SELECT * FROM receipts WHERE id=?').get(id));
+  } catch (err) {
+    console.error('Receipt creation error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // ============================= CREDIT NOTES ==================================

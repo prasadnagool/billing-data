@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import Logo from './Logo.jsx';
 import { api } from '../api.js';
 import { getAuth, clearAuth, canView, isSuperAdmin } from '../auth.js';
 import { getTheme, setTheme, initTheme } from '../theme.js';
+import { useAppShortcuts } from '../hooks/useAppShortcuts.js';
+import { AppShortcutsManager } from './AppShortcutsManager.jsx';
 
 // --- Icon set (stroke icons, inherit color + size) ---
 const PATHS = {
@@ -295,7 +297,7 @@ function UserMenu({ auth, onChangePwd, logout }) {
   );
 }
 
-function Topbar({ onToggleRail }) {
+function Topbar({ onToggleRail, shortcuts, onUpdateShortcut, onReset, formatKey }) {
   const { pathname } = useLocation();
   const crumb = CRUMBS[pathname] || 'PO & Invoice Tracker';
   const auth = getAuth();
@@ -303,6 +305,7 @@ function Topbar({ onToggleRail }) {
   const pickTheme = (t) => { setTheme(t); setTh(t); };
   const toggleTheme = () => pickTheme(theme === 'dark' ? 'light' : 'dark');
   const [showPwd, setShowPwd] = useState(false);
+  const [showShortcutsManager, setShowShortcutsManager] = useState(false);
   const logout = async () => { try { await api.post('/logout'); } catch {} clearAuth(); location.href = '/'; };
   return (
     <header className="bg-panel border-b border-line px-6 py-2.5 flex items-center justify-between">
@@ -320,6 +323,10 @@ function Topbar({ onToggleRail }) {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
           <span className="absolute -top-1 -right-1 w-2 h-2 bg-danger rounded-full" />
         </span>
+        <button onClick={() => setShowShortcutsManager(true)} aria-label="Customize shortcuts" title="Customize shortcuts"
+          className="text-muted hover:text-ink transition-colors cursor-pointer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="4" width="20" height="14" rx="2"/><rect x="5" y="7" width="2" height="2" rx="0.5"/><rect x="9" y="7" width="2" height="2" rx="0.5"/><rect x="13" y="7" width="2" height="2" rx="0.5"/><rect x="17" y="7" width="2" height="2" rx="0.5"/><rect x="5" y="11" width="2" height="2" rx="0.5"/><rect x="9" y="11" width="2" height="2" rx="0.5"/><rect x="13" y="11" width="2" height="2" rx="0.5"/><rect x="17" y="11" width="2" height="2" rx="0.5"/></svg>
+        </button>
         <button onClick={toggleTheme} aria-label="Toggle light / dark mode"
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           className="w-5 h-5 rounded-full border border-line cursor-pointer transition-transform hover:scale-110"
@@ -327,6 +334,7 @@ function Topbar({ onToggleRail }) {
         <UserMenu auth={auth} onChangePwd={() => setShowPwd(true)} logout={logout} />
       </div>
       {showPwd && <ChangePwdModal onClose={() => setShowPwd(false)} />}
+      <AppShortcutsManager isOpen={showShortcutsManager} onClose={() => setShowShortcutsManager(false)} shortcuts={shortcuts} onUpdateShortcut={onUpdateShortcut} onReset={onReset} formatKey={formatKey} />
     </header>
   );
 }
@@ -334,16 +342,20 @@ function Topbar({ onToggleRail }) {
 export default function Layout({ children }) {
   const [rail, setRail] = useState(() => localStorage.getItem('po_sidebar') === '1');
   const { pathname } = useLocation();
+  const nav = useNavigate();
   const contentRef = useRef(null);
   useEffect(() => { initTheme(); }, []);
   // Reset scroll to the top whenever the page (route) changes.
   useEffect(() => { if (contentRef.current) contentRef.current.scrollTop = 0; window.scrollTo(0, 0); }, [pathname]);
   const toggleRail = () => setRail((r) => { const n = !r; localStorage.setItem('po_sidebar', n ? '1' : '0'); return n; });
+
+  const { shortcuts, updateShortcut, resetShortcuts, formatKey } = useAppShortcuts(nav);
+
   return (
     <div className="flex min-h-screen">
       <Sidebar rail={rail} />
       <main className="flex-1 flex flex-col min-w-0">
-        <Topbar onToggleRail={toggleRail} />
+        <Topbar onToggleRail={toggleRail} shortcuts={shortcuts} onUpdateShortcut={updateShortcut} onReset={resetShortcuts} formatKey={formatKey} />
         <div ref={contentRef} className="p-6 overflow-auto flex-1">{children}</div>
       </main>
     </div>

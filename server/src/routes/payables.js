@@ -342,16 +342,23 @@ r.post('/vendor-invoices', (req, res) => {
   const lines = (b.lines || []).map((l, i) => ({ ...computeLine(l), id: uuid(), vendor_invoice_id: id, po_line_id: l.po_line_id || null, note: l.note ?? null, sort_order: i }));
   if (!lines.length) return res.status(400).json({ error: 'At least one line required' });
   const t = sumLines(lines);
+  // Guard: invoice total (with charges) must not exceed PO balance.
+  const { invoiced } = vendorPoRollup(po.id);
+  const poBalance = Math.max(0, po.totals_total - invoiced);
+  const duty = Math.round(b.import_duty || 0), ship = Math.round(b.shipping_charges || 0), other = Math.round(b.other_charges || 0);
+  const chargeTotal = duty + ship + other;
+  const invoiceTotal = t.total + chargeTotal;
+  if (invoiceTotal > poBalance) {
+    return res.status(409).json({ error: `Invoice total (${(invoiceTotal / 100).toFixed(2)}) exceeds PO balance (${(poBalance / 100).toFixed(2)}).` });
+  }
   const match = b.grn_no ? threeWayMatch(po.totals_total, t.total) : 'Pending';
   const approve = b.action === 'approve' && match === 'Matched';
-  const duty = Math.round(b.import_duty || 0), ship = Math.round(b.shipping_charges || 0), other = Math.round(b.other_charges || 0);
   db.prepare(`INSERT INTO vendor_invoices (id,vendor_invoice_no,vendor_po_id,vendor_id,invoice_date,due_date,grn_no,itc_eligibility,reverse_charge,gstr2b_status,three_way_match_status,currency,import_duty,shipping_charges,other_charges,notes,status,totals_taxable,totals_gst,totals_total,created_at,updated_at)
     VALUES (@id,@vno,@po,@vendor,@idate,@due,@grn,@itc,@rc,@g2b,@twm,@currency,@duty,@ship,@other,@notes,@status,@tt,@tg,@to,@ts,@ts)`)
     .run({ id, vno: b.vendor_invoice_no, po: po.id, vendor: po.vendor_id, idate: b.invoice_date, due: b.due_date || null, grn: b.grn_no || null, itc: b.itc_eligibility || 'Eligible', rc: b.reverse_charge ? 1 : 0, g2b: 'Pending', twm: match, currency: po.currency || 'INR', duty, ship, other, notes: b.notes || null, status: approve ? 'Approved' : (match === 'Matched' ? 'Matched' : 'Pending match'), tt: t.taxable, tg: t.gst, to: t.total, ts });
   const ins = db.prepare(`INSERT INTO vendor_invoice_lines (id,vendor_invoice_id,po_line_id,description,hsn_sac,qty,rate,gst_pct,taxable,gst,total,note,sort_order) VALUES (@id,@vendor_invoice_id,@po_line_id,@description,@hsn_sac,@qty,@rate,@gst_pct,@taxable,@gst,@total,@note,@sort_order)`);
   lines.forEach((l) => ins.run(l));
-  // advance PO status
-  const { invoiced } = vendorPoRollup(po.id);
+  // advance PO status (invoiced already calculated above)
   if (po.status === 'Approved' || po.status === 'Partial') {
     db.prepare('UPDATE vendor_pos SET status=?, updated_at=? WHERE id=?').run(invoiced >= po.totals_total ? 'Fully invoiced' : 'Partial', ts, po.id);
   }
@@ -425,9 +432,42 @@ r.post('/payments', (req, res) => {
   const fx_rate = currency === 'INR' ? 1 : (Number(b.fx_rate) || 1);
   const inr_amount = Math.round(net * fx_rate); // actual rupee outflow
   const payment_no = nextNumber('payment', 'PMT', { withFy: true, pad: 3 });
+
+  // VALIDATION: Validate all allocations before inserting payment
+  let totalAllocated = 0;
+  if (b.allocations && Array.isArray(b.allocations)) {
+    for (const alloc of b.allocations) {
+      if (!alloc.applied || alloc.applied <= 0) continue;
+
+      const appliedAmount = Math.round(alloc.applied);
+      totalAllocated += appliedAmount;
+
+      // Check that allocation doesn't exceed invoice balance
+      const inv = db.prepare('SELECT * FROM vendor_invoices WHERE id=?').get(alloc.vendor_invoice_id);
+      if (!inv) {
+        return res.status(400).json({ error: `Invoice ${alloc.vendor_invoice_id} not found` });
+      }
+
+      const { balance } = vendorInvoiceRollup(inv.id, inv.totals_total);
+      if (appliedAmount > balance) {
+        return res.status(400).json({
+          error: `Allocation of ${(appliedAmount / 100).toFixed(2)} exceeds invoice balance of ${(balance / 100).toFixed(2)}. Invoice: ${inv.vendor_invoice_no}`,
+        });
+      }
+    }
+
+    // Check that total allocations don't exceed payment net amount
+    if (totalAllocated > net) {
+      return res.status(400).json({
+        error: `Total allocations ${(totalAllocated / 100).toFixed(2)} exceed payment net amount ${(net / 100).toFixed(2)}`,
+      });
+    }
+  }
+
   db.prepare(`INSERT INTO vendor_payments (id,payment_no,vendor_id,date,mode,bank_account,utr,gross,tds,net,tds_section,currency,fx_rate,inr_amount,created_at,updated_at)
     VALUES (@id,@pno,@vendor,@date,@mode,@bank,@utr,@gross,@tds,@net,@sec,@currency,@fx,@inr,@ts,@ts)`)
     .run({ id, pno: payment_no, vendor: b.vendor_id, date: b.date, mode: b.mode, bank: b.bank_account || null, utr: b.utr || null, gross, tds, net, sec: b.tds_section || null, currency, fx: fx_rate, inr: inr_amount, ts });
+
   const ins = db.prepare('INSERT INTO payment_allocations (id,payment_id,vendor_invoice_id,applied) VALUES (?,?,?,?)');
   (b.allocations || []).forEach((a) => { if (a.applied > 0) ins.run(uuid(), id, a.vendor_invoice_id, Math.round(a.applied)); });
   (b.allocations || []).forEach((a) => {

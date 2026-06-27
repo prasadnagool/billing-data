@@ -159,7 +159,7 @@ export function enrichVendorPo(po) {
     linked_client_po_no: linked,
     invoiced,
     paid,
-    balance: Math.max(0, po.totals_total - paid),
+    balance: Math.max(0, po.totals_total - invoiced),
     progress: po.totals_total > 0 ? Math.min(100, Math.round((invoiced / po.totals_total) * 100)) : 0,
   };
 }

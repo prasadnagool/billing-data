@@ -77,7 +77,7 @@ export function Card({ title, children, actions, className = '' }) {
 // --- Data table ---------------------------------------------------------------
 // columns: [{ header, key|render, num }]
 // footer (optional): array aligned to columns; each entry is a node, or null for a blank cell.
-export function DataTable({ columns, rows, onRowClick, empty = 'No records', footer }) {
+export function DataTable({ columns, rows, onRowClick, empty = 'No records', footer, rowStyle }) {
   return (
     <div className="card p-0 overflow-x-auto">
       <table className="w-full border-collapse text-xs">
@@ -93,7 +93,7 @@ export function DataTable({ columns, rows, onRowClick, empty = 'No records', foo
             <tr><td className="td text-muted text-center py-6" colSpan={columns.length}>{empty}</td></tr>
           )}
           {rows.map((row, ri) => (
-            <tr key={row.id || ri} className={onRowClick ? 'hover:bg-bg2 cursor-pointer' : ''} onClick={onRowClick ? () => onRowClick(row) : undefined}>
+            <tr key={row.id || ri} className={onRowClick ? 'hover:bg-bg2 cursor-pointer' : ''} onClick={onRowClick ? () => onRowClick(row) : undefined} style={rowStyle ? rowStyle(row, ri) : {}}>
               {columns.map((c, ci) => (
                 <td key={ci} className={`td ${c.num ? 'text-right tabular-nums' : ''}`}>
                   {c.render ? c.render(row) : row[c.key]}

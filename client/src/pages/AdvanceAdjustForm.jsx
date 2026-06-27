@@ -35,7 +35,29 @@ export default function AdvanceAdjustForm() {
 
   return (
     <div>
-      <PageHeader title="Adjust Advance against Invoice" sub="Net an unused vendor advance against an open vendor invoice" />
+      <PageHeader
+        title="Adjust Advance against Invoice"
+        sub="Net an unused vendor advance against an open vendor invoice"
+        actions={
+          <div className="flex gap-2">
+            <button
+              onClick={() => nav('/vendor-advances')}
+              title="Close"
+              style={{ background: '#f1f5f9', border: '1.5px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: '#64748b', padding: '6px 10px', margin: '0' }}
+            >
+              ✕
+            </button>
+            <button
+              onClick={submit}
+              disabled={busy}
+              title="Post adjustment"
+              style={{ background: busy ? '#f1f5f9' : '#dcfce7', border: `1.5px solid ${busy ? '#e2e8f0' : '#86efac'}`, borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: busy ? '#cbd5e1' : '#0B6623', padding: '6px 10px', margin: '0', opacity: busy ? 0.6 : 1 }}
+            >
+              ✓
+            </button>
+          </div>
+        }
+      />
       <Card title="Adjustment">
         <FormRow>
           <Field label="Advance *">
@@ -56,10 +78,6 @@ export default function AdvanceAdjustForm() {
           <div className="self-end text-xs text-muted">Capped at the lesser of advance balance and invoice outstanding. TDS already paid on the advance is netted in the 26Q workings.</div>
         </FormRow>
       </Card>
-      <div className="flex gap-2 justify-end">
-        <button className="btn" onClick={() => nav('/vendor-advances')}>Cancel</button>
-        <button className="btn btn-primary" disabled={busy} onClick={submit}>Post adjustment</button>
-      </div>
     </div>
   );
 }

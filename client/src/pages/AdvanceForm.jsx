@@ -38,7 +38,29 @@ export default function AdvanceForm() {
 
   return (
     <div>
-      <PageHeader title="Record Vendor Advance" sub="Pay before an invoice is received; TDS deducted at payment" />
+      <PageHeader
+        title="Record Vendor Advance"
+        sub="Pay before an invoice is received; TDS deducted at payment"
+        actions={
+          <div className="flex gap-2">
+            <button
+              onClick={() => nav('/vendor-advances')}
+              title="Close"
+              style={{ background: '#f1f5f9', border: '1.5px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: '#64748b', padding: '6px 10px', margin: '0' }}
+            >
+              ✕
+            </button>
+            <button
+              onClick={submit}
+              disabled={busy}
+              title="Save advance"
+              style={{ background: busy ? '#f1f5f9' : '#dcfce7', border: `1.5px solid ${busy ? '#e2e8f0' : '#86efac'}`, borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: busy ? '#cbd5e1' : '#0B6623', padding: '6px 10px', margin: '0', opacity: busy ? 0.6 : 1 }}
+            >
+              ✓
+            </button>
+          </div>
+        }
+      />
       <Card title="Advance">
         <FormRow>
           <Field label="Vendor *">
@@ -67,10 +89,6 @@ export default function AdvanceForm() {
         </FormRow>
         <Field label="Notes"><Textarea rows={2} value={form.notes} onChange={set('notes')} /></Field>
       </Card>
-      <div className="flex gap-2 justify-end">
-        <button className="btn" onClick={() => nav('/vendor-advances')}>Cancel</button>
-        <button className="btn btn-primary" disabled={busy} onClick={submit}>Save advance</button>
-      </div>
     </div>
   );
 }

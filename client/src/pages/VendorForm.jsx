@@ -179,12 +179,30 @@ export default function VendorForm() {
 
   return (
     <div>
-      <PageHeader title={editing ? 'Edit Vendor' : 'New Vendor'} sub="Capture vendor code, tax details, contacts, and products" />
+      <PageHeader
+        title={editing ? 'Edit Vendor' : 'New Vendor'}
+        sub="Capture vendor code, tax details, contacts, and products"
+        actions={
+          <div className="flex gap-2">
+            <button
+              onClick={() => nav('/vendors')}
+              title="Close"
+              style={{ background: '#f1f5f9', border: '1.5px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: '#64748b', padding: '6px 10px', margin: '0' }}
+            >
+              ✕
+            </button>
+            <button
+              onClick={submit}
+              disabled={busy}
+              title={editing ? 'Save changes' : 'Save vendor'}
+              style={{ background: busy ? '#f1f5f9' : '#dcfce7', border: `1.5px solid ${busy ? '#e2e8f0' : '#86efac'}`, borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: busy ? '#cbd5e1' : '#0B6623', padding: '6px 10px', margin: '0', opacity: busy ? 0.6 : 1 }}
+            >
+              ✓
+            </button>
+          </div>
+        }
+      />
       <VendorFormFields form={form} setForm={setForm} />
-      <div className="flex gap-2 justify-end">
-        <button className="btn" onClick={() => nav('/vendors')}>Cancel</button>
-        <button className="btn btn-primary" disabled={busy} onClick={submit}>{editing ? 'Save changes' : 'Save vendor'}</button>
-      </div>
     </div>
   );
 }

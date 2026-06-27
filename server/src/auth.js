@@ -1,13 +1,16 @@
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
+import bcrypt from 'bcrypt';
 import { db } from './db.js';
 
-// Legacy built-in logins (kept so existing deployments keep working). DB users
-// (created via the Administration module) take precedence.
-const LEGACY = [
-  { username: 'manager', password: 'manager123', name: 'Manager', role: 'manager' },
-  { username: 'executive', password: 'exec123', name: 'Accounts Executive', role: 'executive' },
-];
+// IMPORTANT: Hardcoded credentials have been removed.
+// Use the Administration panel to create users with proper passwords.
+// If you need default users for development, create them via the admin panel:
+// - Visit /admin/users
+// - Create user "manager" with a secure password
+// - Assign appropriate roles/privileges
+
+const LEGACY = [];
 
 // In-memory sessions: token -> session object
 const sessions = new Map();
@@ -58,34 +61,72 @@ export function requireManager(req, res, next) {
 
 export const authRouter = Router();
 
-authRouter.post('/login', (req, res) => {
-  const username = String(req.body?.username || '').trim().toLowerCase();
-  const password = req.body?.password || '';
-  // DB users first
-  const dbu = db.prepare('SELECT * FROM app_users WHERE username=? AND active=1').get(username);
-  let session = null;
-  if (dbu && dbu.password === password) session = sessionForDbUser(dbu);
-  if (!session) {
-    const u = LEGACY.find((x) => x.username === username && x.password === password);
-    if (u) session = { username: u.username, name: u.name, role: u.role, isSuperAdmin: false, privileges: null };
+authRouter.post('/login', async (req, res) => {
+  try {
+    const username = String(req.body?.username || '').trim().toLowerCase();
+    const password = req.body?.password || '';
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    // DB users first
+    const dbu = db.prepare('SELECT * FROM app_users WHERE username=? AND active=1').get(username);
+    let session = null;
+
+    if (dbu && dbu.password) {
+      let passwordMatch = false;
+
+      // Support both bcrypt (new) and plaintext (legacy) passwords during transition
+      if (dbu.password.startsWith('$2b$')) {
+        // New bcrypt format
+        passwordMatch = await bcrypt.compare(password, dbu.password);
+      } else {
+        // Legacy plaintext format (for backward compatibility)
+        passwordMatch = (password === dbu.password);
+      }
+
+      if (passwordMatch) session = sessionForDbUser(dbu);
+    }
+
+    if (!session) return res.status(401).json({ error: 'Invalid username or password' });
+
+    const token = randomUUID();
+    sessions.set(token, session);
+    res.json({ token, ...session });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-  if (!session) return res.status(401).json({ error: 'Invalid username or password' });
-  const token = randomUUID();
-  sessions.set(token, session);
-  res.json({ token, ...session });
 });
 
 // Change own password (logged-in DB users). Built-in legacy logins can't.
-authRouter.post('/change-password', (req, res) => {
-  if (!req.user) return res.status(401).json({ error: 'Login required.' });
-  const current = req.body?.current_password || '';
-  const next = req.body?.new_password || '';
-  if (next.length < 4) return res.status(400).json({ error: 'New password must be at least 4 characters.' });
-  const u = db.prepare('SELECT * FROM app_users WHERE username=?').get(req.user.username);
-  if (!u) return res.status(400).json({ error: 'This is a built-in account; its password cannot be changed here.' });
-  if (u.password !== current) return res.status(400).json({ error: 'Current password is incorrect.' });
-  db.prepare('UPDATE app_users SET password=?, updated_at=? WHERE id=?').run(next, new Date().toISOString(), u.id);
-  res.json({ ok: true });
+authRouter.post('/change-password', async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Login required.' });
+    const current = req.body?.current_password || '';
+    const next = req.body?.new_password || '';
+
+    if (next.length < 8) return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+    if (current === next) return res.status(400).json({ error: 'New password must be different from current password.' });
+
+    const u = db.prepare('SELECT * FROM app_users WHERE username=?').get(req.user.username);
+    if (!u) return res.status(400).json({ error: 'This is a built-in account; its password cannot be changed here.' });
+
+    // Verify current password with bcrypt
+    if (u.password && !(await bcrypt.compare(current, u.password))) {
+      return res.status(401).json({ error: 'Current password is incorrect.' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(next, 10);
+    db.prepare('UPDATE app_users SET password=?, updated_at=? WHERE id=?').run(hashedPassword, new Date().toISOString(), u.id);
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 authRouter.get('/me', (req, res) => {

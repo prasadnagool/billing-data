@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFetch } from '../hooks.js';
 import { api } from '../api.js';
 import { PageHeader, Card, DataTable, Amt } from '../components/ui.jsx';
 import { Field, FormRow, Input, Select } from '../components/form.jsx';
 import { canEdit } from '../auth.js';
+import { exportCsv, parseCsv } from '../csv.js';
 
 const TYPES = ['Current', 'OD', 'CC', 'Term Loan'];
 const BASIS = [['none', 'No non-utilisation charge'], ['drawn', 'Charge on drawn amount'], ['limit', 'Charge on full sanctioned limit']];
@@ -13,12 +14,33 @@ const toR = (paise) => (paise == null ? '' : (paise / 100).toString());
 
 export default function Facilities() {
   const nav = useNavigate();
+  const fileRef = useRef(null);
   const { data, loading, reload } = useFetch('/facilities');
   const [form, setForm] = useState(blank);
   const [open, setOpen] = useState(false);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const startAdd = () => { setForm(blank()); setOpen(true); };
+
+  const onImport = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    alert('Import functionality for Facilities requires backend API support. Please contact your admin.');
+    e.target.value = '';
+  };
+
+  const doExport = () => exportCsv('treasury-facilities.csv', [
+    { label: 'Name', value: (f) => f.name },
+    { label: 'Type', value: (f) => f.type },
+    { label: 'Sanctioned Limit (₹)', value: (f) => f.limit_amount ? f.limit_amount / 100 : '' },
+    { label: 'Utilised / Outstanding (₹)', value: (f) => f.type === 'Term Loan' ? (f.outstanding ? f.outstanding / 100 : '') : (f.utilised ? f.utilised / 100 : '') },
+    { label: 'Interest Rate (%)', value: (f) => f.interest_rate || '' },
+    { label: 'Non-Util Charge (%)', value: (f) => f.nonutil_charge || '' },
+    { label: 'Non-Util Basis', value: (f) => f.nonutil_basis || '' },
+    { label: 'EMI (₹)', value: (f) => f.emi ? f.emi / 100 : '' },
+    { label: 'Next Due', value: (f) => f.next_due || '' },
+    { label: 'Tenure Left (months)', value: (f) => f.tenure_left || '' },
+  ], data || []);
   const startEdit = (f) => {
     setForm({ ...f, limit_amount: toR(f.limit_amount), utilised: toR(f.utilised), outstanding: toR(f.outstanding), emi: toR(f.emi),
       interest_rate: f.interest_rate || '', nonutil_charge: f.nonutil_charge || '', next_due: f.next_due || '', tenure_left: f.tenure_left || '' });
@@ -54,7 +76,13 @@ export default function Facilities() {
   return (
     <div>
       <PageHeader title="Facilities (banks & loans)" sub="Add, rename, or remove your bank accounts, ODs, CCs and term loans"
-        actions={<><button className="btn" onClick={() => nav('/treasury')}>Overview</button>{canEdit('treasury') && <button className="btn btn-primary" onClick={startAdd}>+ Add facility</button>}</>} />
+        actions={<>
+          <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onImport} />
+          <button className="btn" onClick={() => nav('/treasury')}>Overview</button>
+          <button className="btn" onClick={doExport} disabled={!data?.length}>Export CSV</button>
+          {canEdit('treasury') && <button className="btn" onClick={() => fileRef.current?.click()}>Import CSV</button>}
+          {canEdit('treasury') && <button className="btn btn-primary" onClick={startAdd}>+ Add facility</button>}
+        </>} />
 
       {open && (
         <Card title={form.id ? 'Edit facility' : 'New facility'}>

@@ -19,7 +19,7 @@ export default function VendorPoEdit() {
   useEffect(() => {
     api.get(`/vendor-pos/${id}`).then((p) => {
       setPo(p);
-      setForm({ linked_client_po_id: p.linked_client_po_id || '', po_date: p.po_date || '', required_by: p.required_by || '', payment_terms: p.payment_terms || '', gst_treatment: p.gst_treatment || 'IGST', currency: p.currency || 'INR', ship_to: p.ship_to || '', notes: p.notes || '' });
+      setForm({ linked_client_po_id: p.linked_client_po_id || '', po_date: p.po_date || '', required_by: p.required_by || '', payment_terms: p.payment_terms || '', gst_treatment: p.gst_treatment || 'IGST', currency: p.currency || 'INR', ship_to: p.ship_to || '', notes: p.notes || '', terms_conditions: p.terms_conditions || '' });
       setLines(p.lines.map((l) => ({ description: l.description, hsn_sac: l.hsn_sac, qty: l.qty, rate: l.rate, gst_pct: l.gst_pct, note: l.note || '' })));
     }).catch((e) => alert(e.message));
   }, [id]);
@@ -75,6 +75,26 @@ export default function VendorPoEdit() {
         {linesLocked
           ? <p className="text-[11px] text-muted mb-2">Line items can't be changed because invoices have been recorded against this PO. You can still edit the header fields above.</p>
           : <LineItemsGrid lines={lines} onChange={setLines} currency={form.currency} />}
+      </Card>
+
+      <Card title="Terms and Conditions (printed at bottom of PO)">
+        <Field label="Terms & Conditions (max 100 words)">
+          <textarea
+            className="field"
+            rows={5}
+            value={form.terms_conditions || ''}
+            onChange={(e) => {
+              const text = e.target.value;
+              const wordCount = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+              if (wordCount <= 100) setForm({ ...form, terms_conditions: text });
+            }}
+            placeholder="Enter payment terms, delivery conditions, warranty, return policy, etc. (max 100 words)"
+            style={{ resize: 'vertical', fontFamily: 'monospace' }}
+          />
+        </Field>
+        <div className="text-[11px] text-muted mt-1">
+          {form.terms_conditions ? (form.terms_conditions.trim().split(/\s+/).filter(w => w.length > 0).length) : 0} / 100 words
+        </div>
       </Card>
 
       <div className="flex gap-2 justify-end">

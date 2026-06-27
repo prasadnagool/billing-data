@@ -77,6 +77,17 @@ export function ClientFormFields({ form, setForm }) {
             : <Field label="Pincode"><Input value={form.pincode} onChange={set('pincode')} maxLength={6} /></Field>}
           <Field label="Country"><Input value={form.country || 'India'} disabled /></Field>
         </FormRow>
+        {!foreign && (
+          <FormRow cols={2}>
+            <Field label="State">
+              <Select value={form.state_code} onChange={(e) => setForm({ ...form, state_code: e.target.value, state_name: stateName(e.target.value) })}>
+                <option value="">Select state…</option>
+                {STATES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+              </Select>
+            </Field>
+            <div />
+          </FormRow>
+        )}
       </Card>
 
       <Card title="Contact details" actions={<button type="button" className="btn btn-sm" onClick={addContact}>+ Add contact person</button>}>
@@ -145,12 +156,30 @@ export default function ClientForm() {
 
   return (
     <div>
-      <PageHeader title={editing ? 'Edit Client' : 'New Client'} sub="Capture tax details, location, and contact persons" />
+      <PageHeader
+        title={editing ? 'Edit Client' : 'New Client'}
+        sub="Capture tax details, location, and contact persons"
+        actions={
+          <div className="flex gap-2">
+            <button
+              onClick={() => nav('/clients')}
+              title="Close"
+              style={{ background: '#f1f5f9', border: '1.5px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: '#64748b', padding: '6px 10px', margin: '0' }}
+            >
+              ✕
+            </button>
+            <button
+              onClick={submit}
+              disabled={busy}
+              title={editing ? 'Save changes' : 'Save client'}
+              style={{ background: busy ? '#f1f5f9' : '#dcfce7', border: `1.5px solid ${busy ? '#e2e8f0' : '#86efac'}`, borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: busy ? '#cbd5e1' : '#0B6623', padding: '6px 10px', margin: '0', opacity: busy ? 0.6 : 1 }}
+            >
+              ✓
+            </button>
+          </div>
+        }
+      />
       <ClientFormFields form={form} setForm={setForm} />
-      <div className="flex gap-2 justify-end">
-        <button className="btn" onClick={() => nav('/clients')}>Cancel</button>
-        <button className="btn btn-primary" disabled={busy} onClick={submit}>{editing ? 'Save changes' : 'Save client'}</button>
-      </div>
     </div>
   );
 }

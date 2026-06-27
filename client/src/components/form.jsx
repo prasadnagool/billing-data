@@ -67,12 +67,23 @@ export function GstinField({ value, onChange, onName }) {
 
 // Editable line-items grid. Recomputes taxable/gst/total live.
 // `products` (optional): catalogue list to offer in the description field (autofills HSN + price).
-export function LineItemsGrid({ lines, onChange, readOnlyDesc, currency = 'INR', products }) {
+export function LineItemsGrid({ lines, onChange, readOnlyDesc, currency = 'INR', products, maxBalance = 0 }) {
   const sym = currencySymbol(currency);
   const fmt = (v) => fmtCur(v, currency, { symbol: false });
   const update = (i, field, value) => {
     const next = lines.map((l, idx) => (idx === i ? { ...l, [field]: value } : l));
     onChange(next);
+  };
+
+  // Calculate max rate for each line based on remaining balance
+  const getMaxRate = (line, lineIdx) => {
+    if (maxBalance <= 0) return 0;
+    const qty = Number(line.qty) || 1;
+    const gstPct = Number(line.gst_pct) || 18;
+    // maxTaxableForLine = remaining_balance / (1 + gst_pct/100)
+    const maxTaxable = maxBalance / (1 + gstPct / 100);
+    // maxRate = maxTaxable / qty
+    return Math.round(maxTaxable / qty);
   };
   // Typing/selecting a product name fills HSN + list price (+ gst if known).
   const setDesc = (i, value) => {
@@ -116,7 +127,14 @@ export function LineItemsGrid({ lines, onChange, readOnlyDesc, currency = 'INR',
                 <td className="td border-b-0"><input className="field" value={l.description} disabled={readOnlyDesc} list={products ? 'lineitem-products' : undefined} placeholder={products ? 'Type or pick a product…' : undefined} onChange={(e) => setDesc(i, e.target.value)} /></td>
                 <td className="td border-b-0"><input className="field" value={l.hsn_sac || ''} onChange={(e) => update(i, 'hsn_sac', e.target.value)} /></td>
                 <td className="td border-b-0"><input className="field text-right" type="number" value={l.qty} onChange={(e) => update(i, 'qty', e.target.value)} /></td>
-                <td className="td border-b-0"><input className="field text-right" type="number" value={l.rate / 100} onChange={(e) => update(i, 'rate', Math.round(Number(e.target.value) * 100))} /></td>
+                <td className="td border-b-0">
+                  <div>
+                    <input className="field text-right" type="number" value={l.rate / 100} onChange={(e) => update(i, 'rate', Math.round(Number(e.target.value) * 100))} />
+                    {maxBalance > 0 && getMaxRate(l, i) > 0 && (
+                      <div className="text-[10px] text-muted mt-0.5">max: {fmt(getMaxRate(l, i))}</div>
+                    )}
+                  </div>
+                </td>
                 <td className="td border-b-0"><input className="field text-right" type="number" value={l.gst_pct} onChange={(e) => update(i, 'gst_pct', e.target.value)} /></td>
                 <td className="td border-b-0 text-right tabular-nums">{fmt(c.taxable)}</td>
                 <td className="td border-b-0 text-right tabular-nums">{fmt(c.total)}</td>

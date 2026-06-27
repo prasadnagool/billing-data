@@ -17,6 +17,7 @@ export default function VendorInvoiceForm() {
   const [charges, setCharges] = useState({ import_duty: '', shipping_charges: '', other_charges: '' });
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [poSummary, setPoSummary] = useState(null);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const setCharge = (k) => (e) => setCharges({ ...charges, [k]: e.target.value });
   const po = (pos || []).find((p) => p.id === poId);
@@ -25,14 +26,27 @@ export default function VendorInvoiceForm() {
   const goods = lines.reduce((s, l) => s + Math.round((Number(l.qty) || 0) * (Number(l.rate) || 0) * (1 + (Number(l.gst_pct) || 0) / 100)), 0);
   const chargeTotal = ['import_duty', 'shipping_charges', 'other_charges'].reduce((s, k) => s + Math.round((Number(charges[k]) || 0) * 100), 0);
 
+  // Calculate invoice totals (goods + charges)
+  const invoiceTaxable = lines.reduce((s, l) => s + Math.round((Number(l.qty) || 0) * (Number(l.rate) || 0)), 0);
+  const invoiceGst = lines.reduce((s, l) => {
+    const taxable = Math.round((Number(l.qty) || 0) * (Number(l.rate) || 0));
+    return s + Math.round(taxable * (Number(l.gst_pct) || 0) / 100);
+  }, 0);
+  const invoiceTotal = invoiceTaxable + invoiceGst + chargeTotal;
+  const overBalance = poSummary && invoiceTotal > poSummary.balance;
+
   useEffect(() => {
-    if (!poId) { setLines([]); return; }
-    api.get(`/vendor-pos/${poId}`).then((po) => setLines(po.lines.map((l) => ({ po_line_id: l.id, description: l.description, hsn_sac: l.hsn_sac, qty: l.qty, rate: l.rate, gst_pct: l.gst_pct }))));
+    if (!poId) { setLines([]); setPoSummary(null); return; }
+    api.get(`/vendor-pos/${poId}`).then((po) => {
+      setLines(po.lines.map((l) => ({ po_line_id: l.id, description: l.description, hsn_sac: l.hsn_sac, qty: l.qty, rate: l.rate, gst_pct: l.gst_pct })));
+      setPoSummary({ totals_total: po.totals_total, invoiced: po.invoiced, balance: po.balance });
+    });
   }, [poId]);
 
   const submit = async (action) => {
     if (!poId) return alert('Select a vendor PO');
     if (!form.vendor_invoice_no) return alert('Enter the vendor invoice number');
+    if (overBalance) return alert(`Invoice total ${fmtCur(invoiceTotal, currency)} exceeds PO balance ${fmtCur(poSummary.balance, currency)}. Reduce line items or charges.`);
     setBusy(true);
     try {
       const inv = await api.post('/vendor-invoices', {
@@ -53,7 +67,29 @@ export default function VendorInvoiceForm() {
 
   return (
     <div>
-      <PageHeader title="Record Vendor Invoice" sub="System runs a 3-way match (PO ↔ GRN ↔ invoice) before approval" />
+      <PageHeader
+        title="Record Vendor Invoice"
+        sub="System runs a 3-way match (PO ↔ GRN ↔ invoice) before approval"
+        actions={
+          <div className="flex gap-2">
+            <button
+              onClick={() => nav('/vendor-invoices')}
+              title="Close"
+              style={{ background: '#f1f5f9', border: '1.5px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: '#64748b', padding: '6px 10px', margin: '0' }}
+            >
+              ✕
+            </button>
+            <button
+              onClick={() => submit('approve')}
+              disabled={busy || overBalance}
+              title="Approve & post"
+              style={{ background: (busy || overBalance) ? '#f1f5f9' : '#dcfce7', border: `1.5px solid ${(busy || overBalance) ? '#e2e8f0' : '#86efac'}`, borderRadius: '6px', cursor: 'pointer', fontSize: '18px', color: (busy || overBalance) ? '#cbd5e1' : '#0B6623', padding: '6px 10px', margin: '0', opacity: (busy || overBalance) ? 0.6 : 1 }}
+            >
+              ✓
+            </button>
+          </div>
+        }
+      />
       <Card title="Invoice details">
         <FormRow>
           <Field label="Vendor PO *">
@@ -74,8 +110,34 @@ export default function VendorInvoiceForm() {
           <input type="file" accept="application/pdf,image/png,image/jpeg" className="field" onChange={(e) => setFile(e.target.files[0] || null)} />
           {file && <div className="text-[11px] text-muted mt-1">Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB) · max 25 MB</div>}
         </Field>
+        {poSummary && (
+          <div>
+            <div className="grid grid-cols-3 gap-3 mt-3 border-t border-line pt-3 text-xs">
+              <div><div className="text-muted uppercase text-[10px] tracking-wide">PO value (incl. GST)</div><div className="font-semibold">{fmtCur(poSummary.totals_total, currency)}</div></div>
+              <div><div className="text-muted uppercase text-[10px] tracking-wide">Invoiced (incl. GST)</div><div className="font-semibold">{fmtCur(poSummary.invoiced, currency)}</div></div>
+              <div><div className="text-muted uppercase text-[10px] tracking-wide">Remaining balance (incl. GST)</div><div className={`font-semibold ${overBalance ? 'text-danger' : ''}`}>{fmtCur(poSummary.balance, currency)}</div></div>
+            </div>
+            {overBalance ? (
+              <div className="mt-3 p-3 bg-red-50 border-2 border-danger rounded text-xs text-danger font-semibold">
+                ⚠️ Invoice total {fmtCur(invoiceTotal, currency)} <strong>EXCEEDS PO balance</strong> {fmtCur(poSummary.balance, currency)}. Reduce line items or charges.
+              </div>
+            ) : (
+              <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-900">
+                <strong>Invoice line items total (incl. GST):</strong> Currently {fmtCur(invoiceTaxable + invoiceGst, currency)}, max allowed {fmtCur(poSummary.balance - chargeTotal, currency)} (balance minus additional charges).
+              </div>
+            )}
+          </div>
+        )}
       </Card>
-      <Card title={`Lines (from PO)${currency !== 'INR' ? ' — amounts in ' + currency : ''}`}><LineItemsGrid lines={lines} onChange={setLines} currency={currency} /></Card>
+      <Card title={`Lines (from PO)${currency !== 'INR' ? ' — amounts in ' + currency : ''}`}>
+        <LineItemsGrid lines={lines} onChange={setLines} currency={currency} maxBalance={poSummary?.balance || 0} />
+        {poSummary && (
+          <div className={`text-xs mt-2 ${overBalance ? 'text-danger font-semibold' : 'text-muted'}`}>
+            Invoice total (goods + charges): {fmtCur(invoiceTotal, currency)} · PO balance: {fmtCur(poSummary.balance, currency)}
+            {overBalance && ' — exceeds the PO balance; reduce items or charges before submitting.'}
+          </div>
+        )}
+      </Card>
 
       <Card title={`Additional charges (${currency})`}>
         <FormRow cols={3}>
@@ -87,11 +149,6 @@ export default function VendorInvoiceForm() {
       </Card>
 
       <p className="text-[11px] text-muted mb-3">A GRN number enables the 3-way match (on goods value). Approve &amp; post is allowed only when the match passes within tolerance (±2%). Import duty, shipping &amp; other charges add to the amount payable but are excluded from the match.</p>
-      <div className="flex gap-2 justify-end">
-        <button className="btn" onClick={() => nav('/vendor-invoices')}>Cancel</button>
-        <button className="btn" disabled={busy} onClick={() => submit('draft')}>Save draft</button>
-        <button className="btn btn-primary" disabled={busy} onClick={() => submit('approve')}>Approve &amp; post</button>
-      </div>
     </div>
   );
 }
