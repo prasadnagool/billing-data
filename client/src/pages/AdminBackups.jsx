@@ -6,43 +6,17 @@ const fmtSize = (b) => b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed
 const fmtWhen = (iso) => { try { return new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return iso; } };
 
 export default function AdminBackups() {
-  const [tab, setTab] = useState('backups'); // backups or audit
   const [busy, setBusy] = useState('');
   const [serverBackups, setServerBackups] = useState([]);
   const [picked, setPicked] = useState('');
   const [validating, setValidating] = useState(null);
   const [validateResult, setValidateResult] = useState(null);
-  const [auditLogs, setAuditLogs] = useState([]);
-  const [auditLoading, setAuditLoading] = useState(false);
-  const [auditStartDate, setAuditStartDate] = useState(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
-  const [auditEndDate, setAuditEndDate] = useState(new Date().toISOString().slice(0, 10));
-  const [auditClientId, setAuditClientId] = useState('');
-  const [clients, setClients] = useState([]);
   const fileRef = useRef(null);
 
   const loadServerBackups = useCallback(async () => {
     try { setServerBackups(await api.get('/admin/backups')); } catch { /* ignore */ }
   }, []);
   useEffect(() => { loadServerBackups(); }, [loadServerBackups]);
-
-  const loadAuditLogs = useCallback(async () => {
-    setAuditLoading(true);
-    try {
-      const logs = await api.get(`/admin/audit/logs?start_date=${auditStartDate}&end_date=${auditEndDate}&client_id=${auditClientId}`);
-      setAuditLogs(logs.logs || []);
-    } catch (e) { alert('Failed to load audit logs: ' + e.message); }
-    setAuditLoading(false);
-  }, [auditStartDate, auditEndDate, auditClientId]);
-
-  const loadClients = useCallback(async () => {
-    try {
-      const res = await api.get('/clients?limit=500');
-      setClients(res.clients || []);
-    } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => { loadClients(); }, [loadClients]);
-  useEffect(() => { if (tab === 'audit') loadAuditLogs(); }, [tab, auditStartDate, auditEndDate, auditClientId, loadAuditLogs]);
 
   // Data backup — ask the user where to keep it.
   const backupData = async () => {
@@ -136,36 +110,10 @@ export default function AdminBackups() {
 
   const date = new Date().toISOString().slice(0, 10);
 
-  const exportAuditCSV = () => {
-    const url = `/api/admin/audit/export?start_date=${auditStartDate}&end_date=${auditEndDate}&client_id=${auditClientId}`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `audit-log-${date}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
   return (
     <div>
-      <PageHeader title="Backups & Audit" sub="Back up data, restore, and view access logs" />
+      <PageHeader title="Backups" sub="Back up to your machine or to the server, and restore (super admin only)" />
 
-      {/* Tab bar */}
-      <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--border-subtle)', marginBottom: 28 }}>
-        {[['backups', '🗄️ Backups'], ['audit', '📋 Audit Trail']].map(([t, label]) => (
-          <button key={t} onClick={() => setTab(t)}
-            style={{ padding: '10px 24px', background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 14, fontWeight: 700,
-              color: tab === t ? '#0B6623' : 'var(--text-secondary)',
-              borderBottom: `3px solid ${tab === t ? '#0B6623' : 'transparent'}`,
-              marginBottom: -2, transition: 'all .15s' }}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'backups' && (
-      <>
       <Card title="Data backup">
         <p className="text-xs text-muted mb-3">A consistent copy of the entire database (all clients, vendors, POs, invoices, payments, treasury, users, etc.). You'll be asked whether to <b>download it to this computer</b> or <b>save it on the server</b> (where it can be restored later from the list below).</p>
         <button className="btn btn-primary" disabled={busy === 'data'} onClick={backupData}>
@@ -239,70 +187,6 @@ export default function AdminBackups() {
           <button className="btn text-danger border-danger/50" disabled={busy === 'clear'} onClick={() => clearData(false)}>Clear all data</button>
         </div>
       </Card>
-      </>
-      )}
-
-      {tab === 'audit' && (
-      <div>
-        <Card title="Audit Trail Filters">
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6 }}>From Date</label>
-              <input type="date" value={auditStartDate} onChange={(e) => setAuditStartDate(e.target.value)} className="input" />
-            </div>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6 }}>To Date</label>
-              <input type="date" value={auditEndDate} onChange={(e) => setAuditEndDate(e.target.value)} className="input" />
-            </div>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Client</label>
-              <select value={auditClientId} onChange={(e) => setAuditClientId(e.target.value)} className="input">
-                <option value="">All clients</option>
-                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <button className="btn btn-primary" onClick={exportAuditCSV} disabled={auditLoading}>
-              📥 Export CSV
-            </button>
-          </div>
-        </Card>
-
-        <Card title={`Audit Logs ${auditLoading ? '(Loading...)' : `(${auditLogs.length})`}`}>
-          {auditLogs.length === 0 ? (
-            <p className="text-xs text-muted">No audit logs found for the selected date range.</p>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr style={{ background: 'var(--n-50)' }}>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 700, borderBottom: '1px solid var(--border-subtle)' }}>Time</th>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 700, borderBottom: '1px solid var(--border-subtle)' }}>User</th>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 700, borderBottom: '1px solid var(--border-subtle)' }}>Role</th>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 700, borderBottom: '1px solid var(--border-subtle)' }}>IP</th>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 700, borderBottom: '1px solid var(--border-subtle)' }}>Location</th>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 700, borderBottom: '1px solid var(--border-subtle)' }}>Client</th>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 700, borderBottom: '1px solid var(--border-subtle)' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditLogs.map((log, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                      <td style={{ padding: '10px' }}>{fmtWhen(log.login_at)}</td>
-                      <td style={{ padding: '10px' }}>{log.name || log.username}</td>
-                      <td style={{ padding: '10px' }}><span style={{ fontSize: 10, fontWeight: 700, background: 'var(--action-bg)', color: '#0B6623', padding: '2px 8px', borderRadius: 99 }}>{log.role || '—'}</span></td>
-                      <td style={{ padding: '10px', fontFamily: 'monospace', fontSize: 11 }}>{log.ip || '—'}</td>
-                      <td style={{ padding: '10px' }}>{log.city && log.country ? `${log.city}, ${log.country}` : '—'}</td>
-                      <td style={{ padding: '10px' }}>{log.client_name || '—'}</td>
-                      <td style={{ padding: '10px' }}>{log.logout_at ? <span style={{ color: '#10b981', fontWeight: 600 }}>Logged out</span> : <span style={{ color: '#f59e0b', fontWeight: 600 }}>Active</span>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-      </div>
-      )}
 
       {/* Validation Result Modal */}
       {validateResult && (

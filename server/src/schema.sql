@@ -553,25 +553,3 @@ CREATE TABLE IF NOT EXISTS expense_payees (
   updated_at           TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_payees_category ON expense_payees(category_id);
-
--- Audit trail: login/access history with IP, location, and session tracking
-CREATE TABLE IF NOT EXISTS audit_log (
-  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id            TEXT,
-  username           TEXT,
-  name               TEXT,
-  role               TEXT,
-  action             TEXT DEFAULT 'login',  -- login, logout, access, etc.
-  ip                 TEXT,
-  city               TEXT,
-  country            TEXT,
-  client_id          TEXT,
-  client_name        TEXT,
-  details            TEXT,
-  login_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
-  logout_at          DATETIME,
-  created_at         DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_audit_user_id ON audit_log(user_id);
-CREATE INDEX IF NOT EXISTS idx_audit_login_at ON audit_log(login_at);
-CREATE INDEX IF NOT EXISTS idx_audit_client_id ON audit_log(client_id);
