@@ -192,13 +192,13 @@ export default function AdminBackups() {
       {validateResult && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 9999, padding: '16px'
         }} onClick={() => setValidateResult(null)}>
           <div style={{
-            background: 'var(--bg-surface)', borderRadius: '12px', padding: '28px',
-            maxWidth: '500px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,.3)',
-            border: '1px solid var(--border-subtle)', maxHeight: '80vh', overflowY: 'auto'
+            background: '#ffffff', borderRadius: '14px', padding: '32px',
+            maxWidth: '550px', width: '100%', boxShadow: '0 25px 80px rgba(0,0,0,.4)',
+            border: '2px solid #e2e8f0', maxHeight: '85vh', overflowY: 'auto'
           }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               {validateResult.ok ? '✅ Validation Passed' : '❌ Validation Failed'}
