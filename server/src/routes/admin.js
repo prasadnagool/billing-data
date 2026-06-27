@@ -369,4 +369,77 @@ router.delete('/users/:id', requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// ===================== AUDIT TRAIL =====================
+// List audit logs with date and client filters
+router.get('/admin/audit/logs', requireSuperAdmin, (req, res) => {
+  const startDate = req.query.start_date || '';
+  const endDate = req.query.end_date || '';
+  const clientId = req.query.client_id || '';
+  const limit = parseInt(req.query.limit || '100');
+  const offset = parseInt(req.query.offset || '0');
+
+  let query = 'SELECT * FROM audit_log WHERE 1=1';
+  const params = [];
+
+  if (startDate) {
+    query += ' AND login_at >= ?';
+    params.push(startDate);
+  }
+  if (endDate) {
+    query += ' AND login_at <= ?';
+    params.push(endDate + ' 23:59:59');
+  }
+  if (clientId) {
+    query += ' AND client_id = ?';
+    params.push(clientId);
+  }
+
+  query += ' ORDER BY login_at DESC LIMIT ? OFFSET ?';
+  params.push(limit, offset);
+
+  const logs = db.prepare(query).all(...params);
+  const total = db.prepare(query.split(' LIMIT')[0] + ' LIMIT 1 OFFSET 0').all(...params.slice(0, -2)).length;
+
+  res.json({ logs, total });
+});
+
+// Export audit logs as CSV
+router.get('/admin/audit/export', requireSuperAdmin, (req, res) => {
+  const startDate = req.query.start_date || '';
+  const endDate = req.query.end_date || '';
+  const clientId = req.query.client_id || '';
+
+  let query = 'SELECT * FROM audit_log WHERE 1=1';
+  const params = [];
+
+  if (startDate) {
+    query += ' AND login_at >= ?';
+    params.push(startDate);
+  }
+  if (endDate) {
+    query += ' AND login_at <= ?';
+    params.push(endDate + ' 23:59:59');
+  }
+  if (clientId) {
+    query += ' AND client_id = ?';
+    params.push(clientId);
+  }
+
+  query += ' ORDER BY login_at DESC';
+  const logs = db.prepare(query).all(...params);
+
+  // CSV format
+  const headers = ['ID', 'User', 'Name', 'Role', 'Action', 'IP', 'City', 'Country', 'Client', 'Login Time', 'Logout Time', 'Duration'];
+  const escape = (v) => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g,'""')}"` : s; };
+  const rows = logs.map((l) => {
+    const duration = l.logout_at ? Math.round((new Date(l.logout_at) - new Date(l.login_at)) / 60000) + 'm' : 'Active';
+    return [l.id, l.username, l.name, l.role, l.action, l.ip, l.city, l.country, l.client_name, l.login_at, l.logout_at, duration].map(escape);
+  });
+
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\r\n');
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="audit-log-${new Date().toISOString().slice(0,10)}.csv"`);
+  res.send(csv);
+});
+
 export default router;
